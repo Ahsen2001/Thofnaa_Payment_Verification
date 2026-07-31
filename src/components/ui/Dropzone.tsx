@@ -18,9 +18,9 @@ export function Dropzone({
   onFileSelect,
   selectedFile,
   acceptTypes = "image/png, image/jpeg, image/jpg, application/pdf",
-  maxSizeMB = 5,
+  maxSizeMB = 10,
   label = "Upload Receipt Proof",
-  helperText = "Supports JPG, PNG or PDF (Maximum 5MB)",
+  helperText = "Supports JPG, PNG or PDF (Maximum 10MB)",
   error,
 }: DropzoneProps) {
   const [isDragOver, setIsDragOver] = useState(false);

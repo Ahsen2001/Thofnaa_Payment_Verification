@@ -186,12 +186,12 @@ VALUES (
   'payment-proofs',
   'payment-proofs',
   FALSE, -- STRICTLY PRIVATE BUCKET
-  5242880, -- 5 MB Limit
+  10485760, -- 10 MB Limit
   ARRAY['image/jpeg', 'image/jpg', 'image/png', 'application/pdf']
 )
 ON CONFLICT (id) DO UPDATE SET
   public = FALSE,
-  file_size_limit = 5242880,
+  file_size_limit = 10485760,
   allowed_mime_types = ARRAY['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
 
 -- 5.2 Storage RLS Policies (storage.objects)

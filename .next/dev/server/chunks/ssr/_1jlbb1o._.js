@@ -345,10 +345,10 @@ async function submitPaymentForm(input) {
                 error: "Invalid file type. Payment proof must be a JPG, JPEG, PNG image or PDF document."
             };
         }
-        if (input.proofFileSizeMB > 5) {
+        if (input.proofFileSizeMB > 10) {
             return {
                 success: false,
-                error: "File size exceeds the 5 MB limit. Please upload a smaller receipt file."
+                error: "File size exceeds the 10 MB limit. Please upload a smaller receipt file."
             };
         }
         // 5. Check Duplicate Period Status on Server

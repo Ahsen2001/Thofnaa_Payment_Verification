@@ -131,10 +131,10 @@ export async function submitPaymentForm(input: SubmitPaymentInput): Promise<Subm
       };
     }
 
-    if (input.proofFileSizeMB > 5) {
+    if (input.proofFileSizeMB > 10) {
       return {
         success: false,
-        error: "File size exceeds the 5 MB limit. Please upload a smaller receipt file.",
+        error: "File size exceeds the 10 MB limit. Please upload a smaller receipt file.",
       };
     }
 

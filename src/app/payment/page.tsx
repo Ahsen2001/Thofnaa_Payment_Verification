@@ -505,8 +505,8 @@ function PaymentFormContent() {
                       <Dropzone
                         label="Upload Payment Deposit Receipt"
                         acceptTypes="image/jpeg, image/jpg, image/png, application/pdf"
-                        maxSizeMB={5}
-                        helperText="Accepted formats: JPG, JPEG, PNG or PDF (Max size: 5 MB)"
+                        maxSizeMB={10}
+                        helperText="Accepted formats: JPG, JPEG, PNG or PDF (Max size: 10 MB)"
                         onFileSelect={(file) => setProofFile(file)}
                         selectedFile={proofFile}
                       />
