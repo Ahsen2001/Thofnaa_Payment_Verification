@@ -1,0 +1,18 @@
+{
+  "node": {
+    "402e9b7368c372b2c82c65d7ae6400d1ffd13fa6d8": {
+      "workers": {
+        "app/payment/page": {
+          "moduleId": "[project]/.next-internal/server/app/payment/page/actions.js { ACTIONS_MODULE0 => \"[project]/src/app/actions/studentLookupAction.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "lookupStudentRegNo",
+          "filename": "src/app/actions/studentLookupAction.ts"
+        }
+      },
+      "filename": "src/app/actions/studentLookupAction.ts",
+      "exportedName": "lookupStudentRegNo"
+    }
+  },
+  "edge": {},
+  "encryptionKey": "6t5qogumiBIXHXZSuR2+RXvt6YDc+WawPfbC2fPLp4c="
+}
