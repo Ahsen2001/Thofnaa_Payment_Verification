@@ -105,9 +105,9 @@ export default function AdminPaymentDetailStudioPage({
       updateStoredSubmission(
         submission.id,
         pendingDecision as "VERIFIED" | "REJECTED" | "CLARIFICATION_NEEDED",
-        result.paymentRef || paymentRef,
-        adminNotes,
-        rejectionReason
+        result.paymentRef || paymentRef || undefined,
+        adminNote,
+        adminNote
       );
       setActionSuccess(result.message || `Payment status updated to ${pendingDecision}.`);
     } else {

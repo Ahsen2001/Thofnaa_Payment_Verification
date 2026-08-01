@@ -111,9 +111,9 @@ export function addStoredSubmission(newSub: PaymentSubmission): void {
 export function updateStoredSubmission(
   submissionId: string,
   status: "VERIFIED" | "REJECTED" | "CLARIFICATION_NEEDED",
-  paymentRef?: string,
-  adminNotes?: string,
-  rejectionReason?: string
+  paymentRef?: string | null,
+  adminNotes?: string | null,
+  rejectionReason?: string | null
 ): void {
   const current = getStoredSubmissions();
   const sub = current.find((s) => s.id === submissionId);
