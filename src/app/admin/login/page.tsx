@@ -10,16 +10,13 @@ import {
   Eye, 
   EyeOff, 
   ArrowRight, 
-  ArrowLeft,
-  KeyRound
+  ArrowLeft
 } from "lucide-react";
-import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { FormError } from "@/components/ui/FormError";
 import { adminLoginAction } from "@/app/actions/adminAuthActions";
-import { THOFNAA_CONFIG } from "@/lib/constants";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -50,12 +47,6 @@ export default function AdminLoginPage() {
     }
   };
 
-  const handleDemoAutofill = () => {
-    setEmail("admin@thofnaa.edu.lk");
-    setPassword("admin123");
-    setErrorMessage(null);
-  };
-
   return (
     <div className="max-w-md mx-auto space-y-8 py-8 animate-in fade-in duration-300">
       <div className="text-center space-y-2">
@@ -83,7 +74,7 @@ export default function AdminLoginPage() {
             <Input
               label="Staff Email Address *"
               type="email"
-              placeholder="admin@thofnaa.edu.lk"
+              placeholder="tthofnaa@gmail.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               leftIcon={<Mail className="w-4 h-4" />}
@@ -130,24 +121,6 @@ export default function AdminLoginPage() {
               Sign In to Admin Dashboard
             </Button>
           </form>
-
-          {/* Quick Demo Autofill Box */}
-          <div className="mt-6 p-3.5 rounded-xl bg-thofnaa-ivory border border-thofnaa-gold/30 flex items-center justify-between text-xs">
-            <div>
-              <span className="font-bold text-thofnaa-navy block">Demo Mode Active</span>
-              <span className="text-[11px] text-thofnaa-charcoal-muted font-mono">admin@thofnaa.edu.lk</span>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleDemoAutofill}
-              leftIcon={<KeyRound className="w-3.5 h-3.5" />}
-              className="text-[11px] bg-white font-mono"
-            >
-              Autofill Demo
-            </Button>
-          </div>
         </CardContent>
 
         <CardFooter className="bg-gray-50/80 justify-center">

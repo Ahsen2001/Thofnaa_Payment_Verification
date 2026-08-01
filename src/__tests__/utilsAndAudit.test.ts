@@ -295,29 +295,29 @@ describe("TC-AA: Admin Auth Action (demo-bypass branch)", () => {
 
   // TC-AA-01 Missing fields
   it("TC-AA-01: rejects login with missing email", async () => {
-    const result = await adminLoginAction({ email: "", password: "admin123" });
+    const result = await adminLoginAction({ email: "", password: "Ahsen@2004" });
     expect(result.success).toBe(false);
     expect(result.error).toBeTruthy();
   });
 
   it("TC-AA-01: rejects login with missing password", async () => {
-    const result = await adminLoginAction({ email: "admin@thofnaa.edu.lk", password: "" });
+    const result = await adminLoginAction({ email: "tthofnaa@gmail.com", password: "" });
     expect(result.success).toBe(false);
   });
 
-  // TC-AA-02 Demo bypass succeeds
-  it("TC-AA-02: demo admin@thofnaa.edu.lk / admin123 succeeds", async () => {
+  // TC-AA-02 Admin credentials succeed
+  it("TC-AA-02: admin tthofnaa@gmail.com / Ahsen@2004 succeeds", async () => {
     const result = await adminLoginAction({
-      email: "admin@thofnaa.edu.lk",
-      password: "admin123",
+      email: "tthofnaa@gmail.com",
+      password: "Ahsen@2004",
     });
     expect(result.success).toBe(true);
   });
 
-  // TC-AA-03 Wrong password demo account rejected
-  it("TC-AA-03: wrong password for demo account is rejected", async () => {
+  // TC-AA-03 Wrong password rejected
+  it("TC-AA-03: wrong password for admin account is rejected", async () => {
     const result = await adminLoginAction({
-      email: "admin@thofnaa.edu.lk",
+      email: "tthofnaa@gmail.com",
       password: "wrongpassword",
     });
     expect(result.success).toBe(false);
@@ -326,8 +326,8 @@ describe("TC-AA: Admin Auth Action (demo-bypass branch)", () => {
   // TC-AA-04 Redirect URL on success
   it("TC-AA-04: successful login returns redirectUrl='/admin'", async () => {
     const result = await adminLoginAction({
-      email: "admin@thofnaa.edu.lk",
-      password: "admin123",
+      email: "tthofnaa@gmail.com",
+      password: "Ahsen@2004",
     });
     expect(result.redirectUrl).toBe("/admin");
   });

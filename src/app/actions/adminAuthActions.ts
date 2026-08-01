@@ -28,9 +28,12 @@ export async function adminLoginAction(input: AdminLoginInput): Promise<AdminLog
     const emailClean = input.email.trim().toLowerCase();
     const cookieStore = await cookies();
 
-    // Check fallback demo admin bypass for local testing
-    const isDemoAccount = emailClean === "admin@thofnaa.edu.lk" && input.password === "admin123";
-    if (isDemoAccount) {
+    // Check primary admin credentials
+    const isAdminAccount =
+      (emailClean === "tthofnaa@gmail.com" && input.password === "Ahsen@2004") ||
+      (emailClean === "admin@thofnaa.edu.lk" && input.password === "admin123");
+
+    if (isAdminAccount) {
       cookieStore.set("thofnaa_admin_session", "demo-token", {
         path: "/",
         httpOnly: true,
