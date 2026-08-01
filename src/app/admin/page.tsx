@@ -91,8 +91,11 @@ export default function AdminDashboardPage() {
   const pendingCount = submissions.filter((s) => s.status === "PENDING").length;
 
   // Filter Submissions Dataset
+  const activeStudentRegNos = useMemo(() => new Set(students.map((s) => s.studentRegNo.toUpperCase())), [students]);
+
   const filteredSubmissions = useMemo(() => {
     return submissions.filter((item) => {
+      if (!activeStudentRegNos.has(item.studentRegNo.toUpperCase())) return false;
       // 1. Search Query Filter (Reg No or Student Name)
       if (searchQuery.trim()) {
         const query = searchQuery.trim().toLowerCase();

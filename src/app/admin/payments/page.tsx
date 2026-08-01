@@ -39,7 +39,10 @@ export default function AdminPaymentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [monthFilter, setMonthFilter] = useState("ALL");
 
+  const activeStudentRegNos = new Set(students.map((s) => s.studentRegNo.toUpperCase()));
+
   const filteredSubmissions = submissions.filter((sub) => {
+    if (!activeStudentRegNos.has(sub.studentRegNo.toUpperCase())) return false;
     const matchesStatus = statusFilter === "ALL" || sub.status === statusFilter;
     const matchesMonth = monthFilter === "ALL" || sub.paymentMonth === monthFilter;
     const matchesSearch =

@@ -29,6 +29,7 @@ export function saveStoredStudents(students: Student[]): void {
     try {
       localStorage.setItem(STUDENTS_KEY, JSON.stringify(students));
       window.dispatchEvent(new Event("thofnaa_students_updated"));
+      window.dispatchEvent(new Event("thofnaa_submissions_updated"));
     } catch (err) {
       console.warn("Failed to save students to localStorage:", err);
     }
@@ -75,17 +76,21 @@ export function getStoredSubmissions(): PaymentSubmission[] {
     return INITIAL_SUBMISSIONS;
   }
 
+  const activeStudents = getStoredStudents();
+  const activeRegNos = new Set(activeStudents.map((s) => s.studentRegNo.toUpperCase()));
+
   try {
     const raw = localStorage.getItem(SUBMISSIONS_KEY);
-    if (!raw) {
-      localStorage.setItem(SUBMISSIONS_KEY, JSON.stringify(INITIAL_SUBMISSIONS));
-      return INITIAL_SUBMISSIONS;
+    let list: PaymentSubmission[] = INITIAL_SUBMISSIONS;
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) list = parsed;
     }
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : INITIAL_SUBMISSIONS;
+    // Strictly return submissions belonging to currently enrolled active students
+    return list.filter((sub) => activeRegNos.has(sub.studentRegNo.toUpperCase()));
   } catch (err) {
     console.warn("Failed to load submissions from localStorage:", err);
-    return INITIAL_SUBMISSIONS;
+    return INITIAL_SUBMISSIONS.filter((sub) => activeRegNos.has(sub.studentRegNo.toUpperCase()));
   }
 }
 
@@ -128,9 +133,28 @@ export function updateStoredSubmission(
 }
 
 export function deleteSubmissionsForStudent(studentRegNo: string): void {
-  const current = getStoredSubmissions();
-  const filtered = current.filter(
-    (sub) => sub.studentRegNo.toUpperCase() !== studentRegNo.toUpperCase()
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(SUBMISSIONS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          const filtered = parsed.filter(
+            (sub: PaymentSubmission) => sub.studentRegNo.toUpperCase() !== studentRegNo.toUpperCase()
+          );
+          localStorage.setItem(SUBMISSIONS_KEY, JSON.stringify(filtered));
+          window.dispatchEvent(new Event("thofnaa_submissions_updated"));
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to delete student submissions from localStorage:", err);
+    }
+  }
+
+  const idx = INITIAL_SUBMISSIONS.findIndex(
+    (sub) => sub.studentRegNo.toUpperCase() === studentRegNo.toUpperCase()
   );
-  saveStoredSubmissions(filtered);
+  if (idx !== -1) {
+    INITIAL_SUBMISSIONS.splice(idx, 1);
+  }
 }
