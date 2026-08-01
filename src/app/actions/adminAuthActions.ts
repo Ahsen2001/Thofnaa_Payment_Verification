@@ -1,9 +1,6 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 
 export interface AdminLoginInput {
   email: string;
@@ -26,6 +23,7 @@ export async function adminLoginAction(input: AdminLoginInput): Promise<AdminLog
     }
 
     const emailClean = input.email.trim().toLowerCase();
+    const { cookies } = await import("next/headers");
     const cookieStore = await cookies();
 
     // Check primary admin credentials
@@ -47,6 +45,7 @@ export async function adminLoginAction(input: AdminLoginInput): Promise<AdminLog
       };
     }
 
+    const { createServerSupabaseClient } = await import("@/lib/supabase/server");
     const supabaseServer = await createServerSupabaseClient();
 
     // 1. Authenticate credentials via Supabase Auth
@@ -70,7 +69,6 @@ export async function adminLoginAction(input: AdminLoginInput): Promise<AdminLog
       .single();
 
     if (profileError || !adminProfile || !adminProfile.active) {
-      // Sign out immediately if user is inactive
       await supabaseServer.auth.signOut();
       return {
         success: false,
@@ -103,9 +101,11 @@ export async function adminLoginAction(input: AdminLoginInput): Promise<AdminLog
  */
 export async function adminLogoutAction() {
   try {
+    const { cookies } = await import("next/headers");
     const cookieStore = await cookies();
     cookieStore.delete("thofnaa_admin_session");
 
+    const { createServerSupabaseClient } = await import("@/lib/supabase/server");
     const supabaseServer = await createServerSupabaseClient();
     await supabaseServer.auth.signOut();
   } catch (err) {

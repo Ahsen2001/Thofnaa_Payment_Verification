@@ -5,7 +5,6 @@ import Link from "next/link";
 import { ShieldAlert, ArrowLeft, LogOut, Phone } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { adminLogoutAction } from "@/app/actions/adminAuthActions";
 import { THOFNAA_CONFIG } from "@/lib/constants";
 
 export default function UnauthorizedPage() {
@@ -41,17 +40,19 @@ export default function UnauthorizedPage() {
         </CardContent>
 
         <CardFooter className="bg-gray-50 flex flex-col gap-3">
-          <form action={adminLogoutAction} className="w-full">
-            <Button
-              type="submit"
-              variant="danger"
-              size="md"
-              leftIcon={<LogOut className="w-4 h-4" />}
-              className="w-full font-bold"
-            >
-              Sign Out & Return to Login
-            </Button>
-          </form>
+          <Button
+            type="button"
+            variant="danger"
+            size="md"
+            onClick={() => {
+              document.cookie = "thofnaa_admin_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+              window.location.href = "/admin/login";
+            }}
+            leftIcon={<LogOut className="w-4 h-4" />}
+            className="w-full font-bold cursor-pointer"
+          >
+            Sign Out & Return to Login
+          </Button>
 
           <Link href="/" className="w-full">
             <Button

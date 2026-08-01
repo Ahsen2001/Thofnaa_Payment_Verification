@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { THOFNAA_CONFIG } from "@/lib/constants";
-import { adminLogoutAction } from "@/app/actions/adminAuthActions";
 
 export function AdminSidebar() {
   const pathname = usePathname();
@@ -114,15 +113,17 @@ export function AdminSidebar() {
           </div>
         </div>
 
-        <form action={adminLogoutAction}>
-          <button
-            type="submit"
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs text-thofnaa-gold border border-thofnaa-gold/30 hover:bg-thofnaa-gold hover:text-thofnaa-navy transition-all font-semibold"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Sign Out</span>
-          </button>
-        </form>
+        <button
+          type="button"
+          onClick={() => {
+            document.cookie = "thofnaa_admin_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+            window.location.href = "/admin/login";
+          }}
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs text-thofnaa-gold border border-thofnaa-gold/30 hover:bg-thofnaa-gold hover:text-thofnaa-navy transition-all font-semibold cursor-pointer"
+        >
+          <LogOut className="w-3.5 h-3.5" />
+          <span>Sign Out</span>
+        </button>
       </div>
     </aside>
   );
