@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, use } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { 
   ArrowLeft, 
   CheckCircle2, 
@@ -36,14 +36,10 @@ import { updatePaymentStatusAction } from "@/app/actions/updatePaymentStatusActi
 import { resendPaymentConfirmationEmailAction } from "@/app/actions/verifyPaymentWorkflowAction";
 import { getStoredSubmissions, getStoredStudents, updateStoredSubmission } from "@/lib/studentStore";
 
-export default function AdminPaymentDetailStudioPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const resolvedParams = use(params);
-  const paymentId = resolvedParams.id;
+export default function AdminPaymentDetailStudioPage() {
   const router = useRouter();
+  const routeParams = useParams();
+  const paymentId = (routeParams?.id as string) || "";
 
   // Submission and student loaded asynchronously on mount
   const [submission, setSubmission] = useState<PaymentSubmission | null>(null);

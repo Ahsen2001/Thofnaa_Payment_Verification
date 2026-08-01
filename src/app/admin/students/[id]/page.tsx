@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, use } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { 
   ArrowLeft, 
   Lock, 
@@ -33,14 +33,10 @@ import { Student } from "@/lib/mockData";
 import { updateStudentAction, deleteStudentAction } from "@/app/actions/updateStudentAction";
 import { getStoredStudents, getStoredSubmissions, updateStoredStudent, deleteStoredStudent } from "@/lib/studentStore";
 
-export default function AdminStudentDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default function AdminStudentDetailPage() {
   const router = useRouter();
-  const resolvedParams = use(params);
-  const studentId = resolvedParams.id;
+  const routeParams = useParams();
+  const studentId = (routeParams?.id as string) || "";
 
   // ── Student data loaded from localStorage on mount ──────────────────────────
   const [student, setStudent] = useState<Student | null>(null);
