@@ -18,6 +18,7 @@ export interface BulkImportResult {
   importedCount: number;
   skippedCount: number;
   errors: string[];
+  importedStudents?: Student[];
   message?: string;
 }
 
@@ -44,7 +45,8 @@ export interface BulkEditResult {
  * - Inserts records into dataset/Supabase and logs Audit Trail
  */
 export async function bulkImportStudentsAction(
-  studentsInput: BulkStudentRowInput[]
+  studentsInput: BulkStudentRowInput[],
+  existingRegNosInput?: string[]
 ): Promise<BulkImportResult> {
   const errors: string[] = [];
   let importedCount = 0;
@@ -60,9 +62,12 @@ export async function bulkImportStudentsAction(
       };
     }
 
-    const existingRegNos = new Set(
-      INITIAL_STUDENTS.map((s) => s.studentRegNo.toUpperCase())
-    );
+    const existingRegNos = new Set<string>();
+    if (existingRegNosInput && existingRegNosInput.length > 0) {
+      existingRegNosInput.forEach((reg) => existingRegNos.add(reg.toUpperCase()));
+    } else {
+      INITIAL_STUDENTS.forEach((s) => existingRegNos.add(s.studentRegNo.toUpperCase()));
+    }
 
     const newRecords: Student[] = [];
 
@@ -92,7 +97,7 @@ export async function bulkImportStudentsAction(
       // Generate or normalize Registration Number
       let regNo = row.studentRegNo?.trim().toUpperCase();
       if (!regNo) {
-        const nextIndex = INITIAL_STUDENTS.length + newRecords.length + 1;
+        const nextIndex = existingRegNos.size + newRecords.length + 1;
         regNo = `THF-26-${String(nextIndex).padStart(4, "0")}`;
       }
 
@@ -163,6 +168,7 @@ export async function bulkImportStudentsAction(
       importedCount,
       skippedCount,
       errors,
+      importedStudents: newRecords,
       message: `Successfully imported ${importedCount} student(s). ${skippedCount > 0 ? `${skippedCount} skipped.` : ""}`,
     };
   } catch (err) {

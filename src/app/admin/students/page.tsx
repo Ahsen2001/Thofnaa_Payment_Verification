@@ -196,10 +196,14 @@ export default function AdminStudentsPage() {
       return;
     }
 
-    const res = await bulkImportStudentsAction(parsedRows);
+    const existingRegNos = getStoredStudents().map((s) => s.studentRegNo.toUpperCase());
+    const res = await bulkImportStudentsAction(parsedRows, existingRegNos);
     setIsSubmittingImport(false);
 
     if (res.success) {
+      if (res.importedStudents && res.importedStudents.length > 0) {
+        addStoredStudents(res.importedStudents);
+      }
       setImportResult({ count: res.importedCount, errors: res.errors });
       setCsvText("");
       setStudents(getStoredStudents());
