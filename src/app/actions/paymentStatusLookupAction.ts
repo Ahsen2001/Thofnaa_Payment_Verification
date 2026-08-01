@@ -154,7 +154,11 @@ export async function lookupPaymentStatusAction(
     });
 
     // 5. Mask Student Full Name for Privacy (e.g., Kasun Kalhara Perera -> K. K. Perera)
-    const maskedName = formatNameWithInitials(matchingStudent.fullName);
+    //    Strip any [DEMO] or [DEMO PARENT] tags that exist only in mock data.
+    const cleanedFullName = matchingStudent.fullName
+      .replace(/\[.*?\]\s*/g, "")
+      .trim();
+    const maskedName = formatNameWithInitials(cleanedFullName);
 
     return {
       success: true,

@@ -8,7 +8,9 @@
     "dev:webpack": "next dev --webpack -p 3000",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "jest --testPathPatterns='src/__tests__' --passWithNoTests",
+    "test:coverage": "jest --testPathPatterns='src/__tests__' --coverage --passWithNoTests"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
@@ -23,14 +25,22 @@
     "tailwind-merge": "^2.6.1"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^7.0.0",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20.19.43",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.0.0",
     "autoprefixer": "^10.4.20",
     "eslint": "^9.0.0",
     "eslint-config-next": "^15.0.0",
+    "jest": "^30.4.2",
+    "jest-environment-jsdom": "^30.4.1",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.14",
+    "ts-jest": "^29.4.12",
+    "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }
 }
