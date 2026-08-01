@@ -33,6 +33,7 @@ import { formatLKR } from "@/lib/utils";
 import { INITIAL_SUBMISSIONS, INITIAL_STUDENTS, PaymentSubmission } from "@/lib/mockData";
 import { updatePaymentStatusAction } from "@/app/actions/updatePaymentStatusAction";
 import { resendPaymentConfirmationEmailAction } from "@/app/actions/verifyPaymentWorkflowAction";
+import { updateStoredSubmission } from "@/lib/studentStore";
 
 export default function AdminPaymentDetailStudioPage({
   params,
@@ -101,6 +102,13 @@ export default function AdminPaymentDetailStudioPage({
       if (result.paymentRef) {
         setPaymentRef(result.paymentRef);
       }
+      updateStoredSubmission(
+        submission.id,
+        pendingDecision as "VERIFIED" | "REJECTED" | "CLARIFICATION_NEEDED",
+        result.paymentRef || paymentRef,
+        adminNotes,
+        rejectionReason
+      );
       setActionSuccess(result.message || `Payment status updated to ${pendingDecision}.`);
     } else {
       setActionError(result.error || "Failed to update payment status.");

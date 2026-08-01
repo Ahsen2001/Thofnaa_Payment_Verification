@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { 
   Clock, 
@@ -25,7 +25,6 @@ import {
 import { AdminSidebar } from "@/components/layout/AdminSidebar";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
-import { MetricsCard } from "@/components/ui/MetricsCard";
 import { StatusBadge, PaymentStatus } from "@/components/ui/StatusBadge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -33,11 +32,33 @@ import { Select } from "@/components/ui/Select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/Table";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { formatLKR } from "@/lib/utils";
-import { INITIAL_SUBMISSIONS, INITIAL_STUDENTS } from "@/lib/mockData";
+import { Student, PaymentSubmission } from "@/lib/mockData";
 import { THOFNAA_CONFIG } from "@/lib/constants";
 import { calculateFinancialReport } from "@/lib/financialReporting";
+import { getStoredStudents, getStoredSubmissions } from "@/lib/studentStore";
 
 export default function AdminDashboardPage() {
+  // Persistent Storage States
+  const [students, setStudents] = useState<Student[]>([]);
+  const [submissions, setSubmissions] = useState<PaymentSubmission[]>([]);
+
+  useEffect(() => {
+    setStudents(getStoredStudents());
+    setSubmissions(getStoredSubmissions());
+
+    const handleUpdate = () => {
+      setStudents(getStoredStudents());
+      setSubmissions(getStoredSubmissions());
+    };
+
+    window.addEventListener("thofnaa_students_updated", handleUpdate);
+    window.addEventListener("thofnaa_submissions_updated", handleUpdate);
+    return () => {
+      window.removeEventListener("thofnaa_students_updated", handleUpdate);
+      window.removeEventListener("thofnaa_submissions_updated", handleUpdate);
+    };
+  }, []);
+
   // Filter States
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedMonth, setSelectedMonth] = useState("February");
@@ -51,30 +72,27 @@ export default function AdminDashboardPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
-  // Compute Live Financial Report
+  // Compute Live Financial Report using persistent student & submission state
   const financialReport = useMemo(() => {
-    return calculateFinancialReport({
-      month: selectedMonth,
-      year: selectedYear,
-      grade: selectedGrade,
-      batch: selectedBatch,
-      programme: selectedProgramme,
-    });
-  }, [selectedMonth, selectedYear, selectedGrade, selectedBatch, selectedProgramme]);
+    return calculateFinancialReport(
+      {
+        month: selectedMonth,
+        year: selectedYear,
+        grade: selectedGrade,
+        batch: selectedBatch,
+        programme: selectedProgramme,
+      },
+      students,
+      submissions
+    );
+  }, [selectedMonth, selectedYear, selectedGrade, selectedBatch, selectedProgramme, students, submissions]);
 
   // Compute KPI Metrics from Data
-  const pendingCount = INITIAL_SUBMISSIONS.filter((s) => s.status === "PENDING").length;
-  const verifiedMonthCount = INITIAL_SUBMISSIONS.filter((s) => s.status === "VERIFIED" && s.paymentMonth === "February").length;
-  const clarificationCount = INITIAL_SUBMISSIONS.filter((s) => s.status === "CLARIFICATION_NEEDED").length;
-  const rejectedCount = INITIAL_SUBMISSIONS.filter((s) => s.status === "REJECTED").length;
-  const totalCollectedLKR = INITIAL_SUBMISSIONS
-    .filter((s) => s.status === "VERIFIED")
-    .reduce((sum, s) => sum + s.feeAmount, 0);
-  const totalActiveStudents = INITIAL_STUDENTS.length;
+  const pendingCount = submissions.filter((s) => s.status === "PENDING").length;
 
   // Filter Submissions Dataset
   const filteredSubmissions = useMemo(() => {
-    return INITIAL_SUBMISSIONS.filter((item) => {
+    return submissions.filter((item) => {
       // 1. Search Query Filter (Reg No or Student Name)
       if (searchQuery.trim()) {
         const query = searchQuery.trim().toLowerCase();
@@ -101,7 +119,7 @@ export default function AdminDashboardPage() {
 
       return true;
     });
-  }, [searchQuery, selectedMonth, selectedYear, selectedStatus]);
+  }, [searchQuery, selectedMonth, selectedYear, selectedStatus, submissions]);
 
   // Paginated Results
   const totalPages = Math.ceil(filteredSubmissions.length / itemsPerPage) || 1;
@@ -409,77 +427,38 @@ export default function AdminDashboardPage() {
               </div>
             ) : (
               <>
-                {/* MOBILE CARDS VIEW (Visible on screens < md) */}
-                <div className="block md:hidden divide-y divide-gray-200">
-                  {paginatedSubmissions.map((sub) => {
-                    const studentRecord = INITIAL_STUDENTS.find(
-                      (s) => s.studentRegNo.toUpperCase() === sub.studentRegNo.toUpperCase()
-                    );
-
-                    return (
-                      <div key={`mob-${sub.id}`} className="p-4 space-y-3 bg-white hover:bg-thofnaa-ivory/50">
-                        <div className="flex items-center justify-between">
-                          <span className="font-mono text-xs font-bold text-thofnaa-navy bg-thofnaa-ivory px-2.5 py-1 rounded-lg border border-thofnaa-gold/30">
-                            {sub.studentRegNo}
-                          </span>
-                          <StatusBadge status={sub.status as PaymentStatus} size="sm" />
-                        </div>
-
-                        <div>
-                          <h4 className="font-serif font-bold text-sm text-thofnaa-navy">{sub.studentName}</h4>
-                          <div className="flex items-center justify-between text-xs text-thofnaa-charcoal mt-0.5">
-                            <span>{studentRecord?.gradeLevel || "Grade 6 – 11"} ({sub.paymentMonth} {sub.academicYear})</span>
-                            <strong className="font-mono text-thofnaa-emerald">{formatLKR(sub.feeAmount)}</strong>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                          <span className="text-[10px] font-mono text-gray-400">
-                            Submitted: {new Date(sub.createdAt).toLocaleDateString("en-GB")}
-                          </span>
-                          <Link href={`/admin/payments/${sub.id}`}>
-                            <Button variant="outline" size="sm" leftIcon={<Eye className="w-3.5 h-3.5 text-thofnaa-navy" />}>
-                              Review
-                            </Button>
-                          </Link>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* DESKTOP TABLE VIEW (Visible on screens >= md) */}
-                <div className="hidden md:block overflow-x-auto">
-                  <Table>
+                {/* DESKTOP TABLE VIEW */}
+                <div className="overflow-x-auto w-full">
+                  <Table className="w-full">
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Registration No</TableHead>
-                        <TableHead>Student Name</TableHead>
-                        <TableHead>Grade & Batch</TableHead>
-                        <TableHead>Payment Month</TableHead>
-                        <TableHead>Amount (LKR)</TableHead>
-                        <TableHead>Submitted At</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Action</TableHead>
+                        <TableHead className="whitespace-nowrap">Registration No</TableHead>
+                        <TableHead className="whitespace-nowrap">Student Name</TableHead>
+                        <TableHead className="whitespace-nowrap">Grade & Batch</TableHead>
+                        <TableHead className="whitespace-nowrap">Payment Month</TableHead>
+                        <TableHead className="whitespace-nowrap">Amount (LKR)</TableHead>
+                        <TableHead className="whitespace-nowrap">Submitted At</TableHead>
+                        <TableHead className="whitespace-nowrap">Status</TableHead>
+                        <TableHead className="text-right whitespace-nowrap">Action</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {paginatedSubmissions.map((sub) => {
-                        const studentRecord = INITIAL_STUDENTS.find(
+                        const studentRecord = students.find(
                           (s) => s.studentRegNo.toUpperCase() === sub.studentRegNo.toUpperCase()
                         );
 
                         return (
                           <TableRow key={sub.id} className="hover:bg-thofnaa-ivory/50 transition-colors">
-                            <TableCell className="font-mono font-bold text-thofnaa-navy text-xs">
+                            <TableCell className="font-mono font-bold text-thofnaa-navy text-xs whitespace-nowrap">
                               {sub.studentRegNo}
                             </TableCell>
 
-                            <TableCell className="font-serif font-semibold text-thofnaa-navy text-xs">
-                              {sub.studentName}
+                            <TableCell className="font-serif font-semibold text-thofnaa-navy text-xs whitespace-nowrap">
+                              {studentRecord?.fullName || sub.studentName}
                             </TableCell>
 
-                            <TableCell className="text-xs">
+                            <TableCell className="text-xs whitespace-nowrap">
                               <span className="font-medium text-thofnaa-charcoal">
                                 {studentRecord?.gradeLevel || "Grade 6 – 11"}
                               </span>
@@ -488,15 +467,15 @@ export default function AdminDashboardPage() {
                               </span>
                             </TableCell>
 
-                            <TableCell className="text-xs">
+                            <TableCell className="text-xs whitespace-nowrap">
                               <span className="font-medium">{sub.paymentMonth} {sub.academicYear}</span>
                             </TableCell>
 
-                            <TableCell className="font-mono text-xs font-bold text-thofnaa-emerald">
+                            <TableCell className="font-mono text-xs font-bold text-thofnaa-emerald whitespace-nowrap">
                               {formatLKR(sub.feeAmount)}
                             </TableCell>
 
-                            <TableCell className="text-[11px] text-thofnaa-charcoal-muted font-mono">
+                            <TableCell className="text-[11px] text-thofnaa-charcoal-muted font-mono whitespace-nowrap">
                               {new Date(sub.createdAt).toLocaleDateString("en-GB", {
                                 day: "2-digit",
                                 month: "short",
@@ -504,11 +483,11 @@ export default function AdminDashboardPage() {
                               })}
                             </TableCell>
 
-                            <TableCell>
+                            <TableCell className="whitespace-nowrap">
                               <StatusBadge status={sub.status as PaymentStatus} size="sm" />
                             </TableCell>
 
-                            <TableCell className="text-right">
+                            <TableCell className="text-right whitespace-nowrap">
                               <Link href={`/admin/payments/${sub.id}`}>
                                 <Button variant="outline" size="sm" leftIcon={<Eye className="w-3.5 h-3.5 text-thofnaa-navy" />}>
                                   Review
@@ -525,7 +504,7 @@ export default function AdminDashboardPage() {
             )}
           </CardContent>
 
-          {/* SERVER-SIDE / PAGINATION FOOTER */}
+          {/* PAGINATION FOOTER */}
           {filteredSubmissions.length > 0 && (
             <div className="p-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-thofnaa-charcoal-muted">
               <div>

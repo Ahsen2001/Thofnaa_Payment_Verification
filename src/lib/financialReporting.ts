@@ -1,12 +1,12 @@
 import { INITIAL_STUDENTS, INITIAL_SUBMISSIONS, PaymentSubmission, Student } from "@/lib/mockData";
-import { formatLKR } from "@/lib/utils";
+import { getStoredStudents, getStoredSubmissions } from "@/lib/studentStore";
 
 export interface FinancialFilterOptions {
   month: string; // e.g. "February" or "All"
   year: string; // e.g. "2026" or "All"
   grade: string; // e.g. "Grade 6" or "All"
   batch: string; // e.g. "Foundation Sinhala" or "All"
-  programme: string; // e.g. "Second Language Sinhala" or "All"
+  programme: string; // e.g. "Second Language Sinhala" or "All text"
 }
 
 export interface FinancialReportData {
@@ -40,24 +40,27 @@ export interface FinancialReportData {
  * 3. Collection Percentage = (Total Verified Revenue / Total Expected Revenue) × 100.
  */
 export function calculateFinancialReport(
-  filters: FinancialFilterOptions
+  filters: FinancialFilterOptions,
+  customStudents?: Student[],
+  customSubmissions?: PaymentSubmission[]
 ): FinancialReportData {
   const { month, year, grade, batch, programme } = filters;
 
   const targetMonth = month === "All" ? "February" : month;
   const targetYear = year === "All" ? "2026" : year;
 
+  // Use persistent store if in browser, otherwise fallback to INITIAL_STUDENTS
+  const studentList = customStudents || (typeof window !== "undefined" ? getStoredStudents() : INITIAL_STUDENTS);
+  const submissionList = customSubmissions || (typeof window !== "undefined" ? getStoredSubmissions() : INITIAL_SUBMISSIONS);
+
   // 1. Filter Active Students matching Grade, Batch, and Programme criteria
-  const matchingStudents = INITIAL_STUDENTS.filter((st) => {
-    // Grade Filter
+  const matchingStudents = studentList.filter((st) => {
     if (grade !== "All" && st.gradeLevel.toLowerCase() !== grade.toLowerCase()) {
       return false;
     }
-    // Batch Filter
     if (batch !== "All" && !st.batch.toLowerCase().includes(batch.toLowerCase())) {
       return false;
     }
-    // Programme Filter
     if (programme !== "All" && !st.programme.toLowerCase().includes(programme.toLowerCase())) {
       return false;
     }
@@ -72,7 +75,7 @@ export function calculateFinancialReport(
   // 3. Filter Submissions for target month, year, grade, batch, programme
   const studentRegNos = new Set(matchingStudents.map((st) => st.studentRegNo.toUpperCase()));
 
-  const matchingSubmissions = INITIAL_SUBMISSIONS.filter((sub) => {
+  const matchingSubmissions = submissionList.filter((sub) => {
     if (!studentRegNos.has(sub.studentRegNo.toUpperCase())) return false;
     if (month !== "All" && sub.paymentMonth.toLowerCase() !== month.toLowerCase()) return false;
     if (year !== "All" && sub.academicYear.toString() !== year) return false;
@@ -94,7 +97,6 @@ export function calculateFinancialReport(
   const clarificationCount = matchingSubmissions.filter((sub) => sub.status === "CLARIFICATION_NEEDED").length;
 
   // 7. Calculate Unpaid / Not Submitted Students
-  // A student is considered unpaid for this period if they have no VERIFIED or PENDING payment
   const activeStudentRegsWithSubmission = new Set(
     matchingSubmissions
       .filter((sub) => sub.status === "VERIFIED" || sub.status === "PENDING")
@@ -119,7 +121,7 @@ export function calculateFinancialReport(
     },
     activeStudents: activeStudentsCount,
     totalExpectedLKR,
-    totalCollectedLKR: totalVerifiedLKR, // Strictly VERIFIED
+    totalCollectedLKR: totalVerifiedLKR,
     collectionPercentage,
     verifiedCount,
     totalVerifiedLKR,
