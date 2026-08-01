@@ -101,6 +101,18 @@ export default function AdminStudentDetailPage({
     setIsUpdating(false);
 
     if (result.success) {
+      // Sync client-side in-memory mock record so roster page updates immediately
+      const clientTarget = INITIAL_STUDENTS.find((s) => s.id === student.id);
+      if (clientTarget) {
+        clientTarget.fullName = fullName.trim();
+        clientTarget.guardianName = guardianName.trim();
+        clientTarget.guardianEmail = guardianEmail.trim().toLowerCase();
+        clientTarget.whatsappNumber = whatsappNumber.trim();
+        clientTarget.guardianPhone = whatsappNumber.trim();
+        clientTarget.gradeLevel = gradeLevel;
+        clientTarget.batch = batch;
+        clientTarget.programme = programme;
+      }
       setActionSuccess(result.message || "Student profile updated and audit log recorded.");
     } else {
       setActionError(result.error || "Failed to update student profile.");

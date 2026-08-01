@@ -77,7 +77,7 @@ export async function checkPaymentPeriodStatus(
       allowed: true,
       status: "CLARIFICATION_NEEDED",
       message: `Previous submission for ${month} ${year} requires clarification: "${existing.rejectionReason || "Please re-upload a clear receipt."}". You may submit a new proof.`,
-      adminNote: existing.rejectionReason,
+      adminNote: existing.adminNotes || existing.rejectionReason,
     };
   }
 
