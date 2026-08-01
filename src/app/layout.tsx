@@ -3,6 +3,12 @@ import "./globals.css";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { THOFNAA_CONFIG } from "@/lib/constants";
+import { validateEnvOnStartup } from "@/lib/env";
+
+// Validate all required environment variables on every server boot.
+// In production this throws immediately, preventing a broken deployment
+// from silently serving a non-functional site to users.
+validateEnvOnStartup();
 
 export const metadata: Metadata = {
   title: `${THOFNAA_CONFIG.name} - Student Payment Verification Portal`,

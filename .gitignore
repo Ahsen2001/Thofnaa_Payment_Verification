@@ -1,29 +1,46 @@
-# dependencies
+# =============================================================================
+# THOFNAA INSTITUTE — .gitignore
+# =============================================================================
+
+# ── Node Modules ─────────────────────────────────────────────────────────────
 /node_modules
 /.pnpm
 /.yarn
 
-# Next.js build output
+# ── Next.js Build Output ──────────────────────────────────────────────────────
 /.next/
 /out/
 /build
 
-# Production & Local Environment Variables
-.env*.local
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+# ── Environment Files — ALL VARIANTS BLOCKED ─────────────────────────────────
+# These files contain secrets and must NEVER be committed to version control.
+.env
+.env.*
+!.env.example
+# The above rules mean:
+#   .env            → blocked
+#   .env.local      → blocked
+#   .env.production → blocked
+#   .env.*.local    → blocked
+#   .env.example    → ALLOWED (the public template)
 
-# Logs
+# ── Logs ─────────────────────────────────────────────────────────────────────
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# System Files
+# ── System & Editor Files ─────────────────────────────────────────────────────
 .DS_Store
 *.pem
+Thumbs.db
 
-# Vercel
+# ── Vercel ────────────────────────────────────────────────────────────────────
 .vercel
+
+# ── TypeScript Build Info ──────────────────────────────────────────────────────
+*.tsbuildinfo
+next-env.d.ts
+
+# ── Coverage ──────────────────────────────────────────────────────────────────
+/coverage
