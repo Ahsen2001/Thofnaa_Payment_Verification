@@ -39,13 +39,64 @@ import { getBatchForGrade } from "@/lib/programmes";
 import { bulkImportStudentsAction, bulkEditStudentsAction, BulkStudentRowInput } from "@/app/actions/bulkStudentActions";
 import { deleteStudentAction } from "@/app/actions/updateStudentAction";
 import { getStoredStudents, deleteStoredStudent, addStoredStudents, saveStoredStudents } from "@/lib/studentStore";
+import { clientEnv } from "@/lib/env";
 
 export default function AdminStudentsPage() {
   // Persistent Student Roster State
   const [students, setStudents] = useState<Student[]>([]);
 
   useEffect(() => {
-    setStudents(getStoredStudents());
+    const loadData = async () => {
+      let local = getStoredStudents();
+
+      if (clientEnv.supabase.url && !clientEnv.supabase.url.includes("demo-thofnaa")) {
+        try {
+          const { createClient } = await import("@supabase/supabase-js");
+          const supabase = createClient(clientEnv.supabase.url, clientEnv.supabase.anonKey);
+          const { data, error } = await supabase.from("students").select("*");
+          if (data && !error && data.length > 0) {
+            const mapped: Student[] = data.map((d: any) => ({
+              id: d.id,
+              studentRegNo: d.student_reg_no,
+              fullName: d.full_name,
+              gradeLevel: d.grade_level,
+              batch: d.batch,
+              programme: d.programme || "Second Language Sinhala",
+              guardianName: d.guardian_name,
+              guardianEmail: d.guardian_email,
+              guardianPhone: d.guardian_phone || d.whatsapp_number,
+              whatsappNumber: d.whatsapp_number || d.guardian_phone,
+              createdAt: d.created_at,
+              active: d.active !== false,
+            }));
+            saveStoredStudents(mapped);
+            local = mapped;
+          } else if (data && data.length === 0 && local.length > 0) {
+            const toInsert = local.map((s) => ({
+              id: s.id,
+              student_reg_no: s.studentRegNo,
+              full_name: s.fullName,
+              grade_level: s.gradeLevel,
+              batch: s.batch,
+              programme: s.programme || "Second Language Sinhala",
+              guardian_name: s.guardianName,
+              guardian_email: s.guardianEmail,
+              guardian_phone: s.guardianPhone || s.whatsappNumber,
+              whatsapp_number: s.whatsappNumber || s.guardianPhone,
+              active: s.active !== false,
+              created_at: s.createdAt || new Date().toISOString(),
+            }));
+            await supabase.from("students").insert(toInsert as any);
+          }
+        } catch (err) {
+          console.warn("Supabase load students warning:", err);
+        }
+      }
+
+      setStudents(local);
+    };
+
+    loadData();
 
     const handleUpdate = () => {
       setStudents(getStoredStudents());

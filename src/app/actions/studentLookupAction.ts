@@ -1,6 +1,6 @@
-
 import { INITIAL_STUDENTS } from "@/lib/mockData";
 import { getStoredStudents } from "@/lib/studentStore";
+import { clientEnv } from "@/lib/env";
 
 export interface PublicStudentInfo {
   id: string;
@@ -19,11 +19,11 @@ export interface LookupResult {
 }
 
 /**
- * Secure Server Action for THOFNAA Student Registration Lookup.
+ * Secure Action for THOFNAA Student Registration Lookup.
  * - Normalizes input to uppercase and trims spaces
  * - Validates format: THF-YY-NNNN (e.g. THF-26-0001)
+ * - Queries Supabase 'students' table first if configured, falling back to local store
  * - Restricts returned dataset to non-sensitive fields only
- * - Prevents database leakage to browser client
  */
 export async function lookupStudentRegNo(rawRegNo: string): Promise<LookupResult> {
   try {
@@ -46,13 +46,48 @@ export async function lookupStudentRegNo(rawRegNo: string): Promise<LookupResult
       };
     }
 
-    // 3. Perform Lookup (queries browser localStorage store or fallback mock roster in test/server)
-    const allStudents = typeof window !== "undefined" ? getStoredStudents() : INITIAL_STUDENTS;
-    const matchedStudent = allStudents.find(
-      (s) => s.studentRegNo.toUpperCase() === normalizedRegNo
-    );
+    let matchedStudent: any = null;
 
-    // 4. Handle Unknown Registration Number
+    // 3. Query Supabase Database if Supabase URL is configured and not default demo
+    if (clientEnv.supabase.url && !clientEnv.supabase.url.includes("demo-thofnaa")) {
+      try {
+        const { createClient } = await import("@supabase/supabase-js");
+        const supabase = createClient(clientEnv.supabase.url, clientEnv.supabase.anonKey);
+        const { data, error } = await supabase
+          .from("students")
+          .select("*")
+          .ilike("student_reg_no", normalizedRegNo)
+          .maybeSingle();
+
+        if (data && !error) {
+          matchedStudent = {
+            id: data.id,
+            studentRegNo: data.student_reg_no,
+            fullName: data.full_name,
+            gradeLevel: data.grade_level,
+            batch: data.batch,
+            programme: data.programme,
+            guardianName: data.guardian_name,
+            guardianEmail: data.guardian_email,
+            guardianPhone: data.guardian_phone || data.whatsapp_number,
+            whatsappNumber: data.whatsapp_number || data.guardian_phone,
+            active: data.active !== false,
+          };
+        }
+      } catch (err) {
+        console.warn("Supabase student lookup warning:", err);
+      }
+    }
+
+    // 4. Fallback to browser localStorage store or INITIAL_STUDENTS if not found in Supabase
+    if (!matchedStudent) {
+      const allStudents = typeof window !== "undefined" ? getStoredStudents() : INITIAL_STUDENTS;
+      matchedStudent = allStudents.find(
+        (s) => s.studentRegNo.toUpperCase() === normalizedRegNo
+      );
+    }
+
+    // 5. Handle Unknown Registration Number
     if (!matchedStudent) {
       return {
         success: false,
@@ -60,22 +95,21 @@ export async function lookupStudentRegNo(rawRegNo: string): Promise<LookupResult
       };
     }
 
-    // 5. Handle Inactive / Suspended Student
-    if ("status" in matchedStudent && matchedStudent.status !== "ACTIVE") {
+    // 6. Handle Inactive / Suspended Student
+    if (matchedStudent.active === false || ("status" in matchedStudent && matchedStudent.status !== "ACTIVE" && matchedStudent.status !== undefined)) {
       return {
         success: false,
         error: `Student registration "${normalizedRegNo}" is currently inactive or suspended. Please contact THOFNAA administration to reactivate your enrollment.`,
       };
     }
 
-    // 6. Return ONLY Limited Un-sensitive Public Fields
-    // EXCLUDES: full parent name, email, WhatsApp, address, or sensitive profile information
+    // 7. Return ONLY Limited Un-sensitive Public Fields
     const publicStudent: PublicStudentInfo = {
       id: matchedStudent.id,
       registrationNo: matchedStudent.studentRegNo,
       nameWithInitials: getInitialsName(matchedStudent.fullName),
       grade: matchedStudent.gradeLevel,
-      programme: matchedStudent.batch || "Foundation Sinhala",
+      programme: matchedStudent.batch || matchedStudent.programme || "Foundation Sinhala",
       monthlyFeeLKR: 1000.00,
       status: "ACTIVE",
     };
@@ -85,7 +119,7 @@ export async function lookupStudentRegNo(rawRegNo: string): Promise<LookupResult
       student: publicStudent,
     };
   } catch (err) {
-    console.error("Server Student Lookup Error:", err);
+    console.error("Student Lookup Error:", err);
     return {
       success: false,
       error: "An unexpected server error occurred during lookup. Please try again or contact support.",

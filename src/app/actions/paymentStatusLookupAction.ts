@@ -1,7 +1,7 @@
 import { INITIAL_SUBMISSIONS, INITIAL_STUDENTS } from "@/lib/mockData";
 import { getStoredStudents, getStoredSubmissions } from "@/lib/studentStore";
 import { formatNameWithInitials } from "@/lib/utils";
-import { THOFNAA_CONFIG } from "@/lib/constants";
+import { clientEnv } from "@/lib/env";
 
 export interface StatusLookupInput {
   studentRegNo: string;
@@ -29,13 +29,7 @@ export interface StatusLookupResult {
 }
 
 /**
- * SECURE SERVER ACTION: Two-Factor Student Payment History Lookup
- * 
- * Privacy Safeguards:
- * 1. Requires BOTH Registration Number AND Parent Email.
- * 2. Does NOT allow lookup using Registration Number alone.
- * 3. Returns masked initials format (e.g., K. K. Perera).
- * 4. Strips proof storage paths, admin notes, and database internal IDs.
+ * Two-Factor Student Payment History Lookup
  */
 export async function lookupPaymentStatusAction(
   input: StatusLookupInput
@@ -62,25 +56,53 @@ export async function lookupPaymentStatusAction(
       };
     }
 
-    // 2. Validate Matching Student in Database / Mock Dataset / Local Store
-    const allStudents = typeof window !== "undefined" ? getStoredStudents() : INITIAL_STUDENTS;
-    const mockStudent = allStudents.find(
-      (s) =>
-        s.studentRegNo.toUpperCase() === normalizedRegNo &&
-        s.guardianEmail.toLowerCase() === normalizedEmail
-    );
+    let matchingStudent: any = null;
 
-    let matchingStudent = mockStudent
-      ? {
+    // 2. Query Supabase Database if configured
+    if (clientEnv.supabase.url && !clientEnv.supabase.url.includes("demo-thofnaa")) {
+      try {
+        const { createClient } = await import("@supabase/supabase-js");
+        const supabase = createClient(clientEnv.supabase.url, clientEnv.supabase.anonKey);
+        const { data, error } = await supabase
+          .from("students")
+          .select("*")
+          .ilike("student_reg_no", normalizedRegNo)
+          .ilike("guardian_email", normalizedEmail)
+          .maybeSingle();
+
+        if (data && !error) {
+          matchingStudent = {
+            registrationNo: data.student_reg_no,
+            fullName: data.full_name,
+            grade: data.grade_level,
+            programme: data.programme || data.batch || "Second Language Sinhala",
+            email: data.guardian_email,
+          };
+        }
+      } catch (err) {
+        console.warn("Supabase status lookup student query warning:", err);
+      }
+    }
+
+    // Fallback to localStorage / INITIAL_STUDENTS
+    if (!matchingStudent) {
+      const allStudents = typeof window !== "undefined" ? getStoredStudents() : INITIAL_STUDENTS;
+      const mockStudent = allStudents.find(
+        (s) =>
+          s.studentRegNo.toUpperCase() === normalizedRegNo &&
+          s.guardianEmail.toLowerCase() === normalizedEmail
+      );
+
+      if (mockStudent) {
+        matchingStudent = {
           registrationNo: mockStudent.studentRegNo,
           fullName: mockStudent.fullName,
           grade: mockStudent.gradeLevel,
-          programme: mockStudent.programme || "Second Language Sinhala",
+          programme: mockStudent.programme || mockStudent.batch || "Second Language Sinhala",
           email: mockStudent.guardianEmail,
-        }
-      : null;
-
-
+        };
+      }
+    }
 
     // 3. Dual-Factor Validation Guard: Must match BOTH fields
     if (!matchingStudent) {
@@ -91,10 +113,38 @@ export async function lookupPaymentStatusAction(
     }
 
     // 4. Fetch Payment Submissions for this Student
-    const allSubmissions = typeof window !== "undefined" ? getStoredSubmissions() : INITIAL_SUBMISSIONS;
-    const studentSubmissions = allSubmissions.filter(
-      (s) => s.studentRegNo.toUpperCase() === normalizedRegNo
-    );
+    let studentSubmissions: any[] = [];
+
+    if (clientEnv.supabase.url && !clientEnv.supabase.url.includes("demo-thofnaa")) {
+      try {
+        const { createClient } = await import("@supabase/supabase-js");
+        const supabase = createClient(clientEnv.supabase.url, clientEnv.supabase.anonKey);
+        const { data, error } = await supabase
+          .from("payment_submissions")
+          .select("*")
+          .ilike("student_reg_no", normalizedRegNo);
+
+        if (data && !error && data.length > 0) {
+          studentSubmissions = data.map((d) => ({
+            paymentMonth: d.payment_month,
+            academicYear: d.academic_year,
+            feeAmount: d.fee_amount,
+            status: d.status,
+            paymentRef: d.payment_ref,
+            createdAt: d.created_at,
+          }));
+        }
+      } catch (err) {
+        console.warn("Supabase status lookup submissions query warning:", err);
+      }
+    }
+
+    if (studentSubmissions.length === 0) {
+      const allSubmissions = typeof window !== "undefined" ? getStoredSubmissions() : INITIAL_SUBMISSIONS;
+      studentSubmissions = allSubmissions.filter(
+        (s) => s.studentRegNo.toUpperCase() === normalizedRegNo
+      );
+    }
 
     // Build 12-Month Academic History Roster for 2026
     const monthsList = [
@@ -131,8 +181,7 @@ export async function lookupPaymentStatusAction(
       };
     });
 
-    // 5. Mask Student Full Name for Privacy (e.g., Kasun Kalhara Perera -> K. K. Perera)
-    //    Strip any [DEMO] or [DEMO PARENT] tags that exist only in mock data.
+    // 5. Mask Student Full Name for Privacy
     const cleanedFullName = matchingStudent.fullName
       .replace(/\[.*?\]\s*/g, "")
       .trim();

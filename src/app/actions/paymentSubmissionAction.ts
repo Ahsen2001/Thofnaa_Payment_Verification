@@ -1,6 +1,6 @@
-
 import { INITIAL_SUBMISSIONS, PaymentSubmission } from "@/lib/mockData";
 import { getStoredSubmissions, addStoredSubmission } from "@/lib/studentStore";
+import { clientEnv } from "@/lib/env";
 
 export interface SubmitPaymentInput {
   studentRegNo: string;
@@ -37,7 +37,7 @@ export interface SubmitPaymentResult {
 }
 
 /**
- * Server Action: Check if a payment already exists for student + month + year
+ * Check if a payment already exists for student + month + year
  */
 export async function checkPaymentPeriodStatus(
   studentRegNo: string,
@@ -45,14 +45,47 @@ export async function checkPaymentPeriodStatus(
   year: number
 ): Promise<CheckPeriodResult> {
   const normalizedRegNo = studentRegNo.trim().toUpperCase();
-  
-  const allSubmissions = typeof window !== "undefined" ? getStoredSubmissions() : INITIAL_SUBMISSIONS;
-  const existing = allSubmissions.find(
-    (sub) =>
-      sub.studentRegNo.toUpperCase() === normalizedRegNo &&
-      sub.paymentMonth.toLowerCase() === month.toLowerCase() &&
-      sub.academicYear === year
-  );
+  let existing: any = null;
+
+  // 1. Try Supabase lookup if configured
+  if (clientEnv.supabase.url && !clientEnv.supabase.url.includes("demo-thofnaa")) {
+    try {
+      const { createClient } = await import("@supabase/supabase-js");
+      const supabase = createClient(clientEnv.supabase.url, clientEnv.supabase.anonKey);
+      const { data, error } = await supabase
+        .from("payment_submissions")
+        .select("*")
+        .ilike("student_reg_no", normalizedRegNo)
+        .ilike("payment_month", month)
+        .eq("academic_year", year)
+        .maybeSingle();
+
+      if (data && !error) {
+        existing = {
+          studentRegNo: data.student_reg_no,
+          paymentMonth: data.payment_month,
+          academicYear: data.academic_year,
+          status: data.status,
+          paymentRef: data.payment_ref,
+          rejectionReason: data.rejection_reason,
+          adminNotes: data.admin_notes,
+        };
+      }
+    } catch (err) {
+      console.warn("Supabase period check warning:", err);
+    }
+  }
+
+  // 2. Fallback to localStorage / INITIAL_SUBMISSIONS
+  if (!existing) {
+    const allSubmissions = typeof window !== "undefined" ? getStoredSubmissions() : INITIAL_SUBMISSIONS;
+    existing = allSubmissions.find(
+      (sub) =>
+        sub.studentRegNo.toUpperCase() === normalizedRegNo &&
+        sub.paymentMonth.toLowerCase() === month.toLowerCase() &&
+        sub.academicYear === year
+    );
+  }
 
   if (!existing) {
     return { allowed: true };
@@ -96,7 +129,7 @@ export async function checkPaymentPeriodStatus(
 }
 
 /**
- * Server Action: Process payment submission with full server validation
+ * Process payment submission with server validation and Supabase DB sync
  */
 export async function submitPaymentForm(input: SubmitPaymentInput): Promise<SubmitPaymentResult> {
   try {
@@ -140,7 +173,7 @@ export async function submitPaymentForm(input: SubmitPaymentInput): Promise<Subm
       };
     }
 
-    // 5. Check Duplicate Period Status on Server
+    // 5. Check Duplicate Period Status
     const periodCheck = await checkPaymentPeriodStatus(
       input.studentRegNo,
       input.paymentMonth,
@@ -155,10 +188,9 @@ export async function submitPaymentForm(input: SubmitPaymentInput): Promise<Subm
       };
     }
 
-    // 6. Generate Unique Payment Reference Code: THF-PAY-YY-XXXX
-    const generatedRef = `THF-PAY-26-000${INITIAL_SUBMISSIONS.length + 1}`;
+    // 6. Generate Unique Payment Reference Code: THF-PAY-26-XXXX
+    const generatedRef = `THF-PAY-26-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    // 7. Log Record into Dataset
     const newSubmission: PaymentSubmission = {
       id: `sub-${Date.now()}`,
       paymentRef: generatedRef,
@@ -186,12 +218,42 @@ export async function submitPaymentForm(input: SubmitPaymentInput): Promise<Subm
       addStoredSubmission(newSubmission);
     }
 
+    // 7. Sync to Supabase Database if configured
+    if (clientEnv.supabase.url && !clientEnv.supabase.url.includes("demo-thofnaa")) {
+      try {
+        const { createClient } = await import("@supabase/supabase-js");
+        const supabase = createClient(clientEnv.supabase.url, clientEnv.supabase.anonKey);
+        await supabase.from("payment_submissions").insert({
+          id: newSubmission.id,
+          payment_ref: newSubmission.paymentRef,
+          student_id: newSubmission.studentId,
+          student_reg_no: newSubmission.studentRegNo,
+          student_name: newSubmission.studentName,
+          guardian_email: newSubmission.guardianEmail,
+          guardian_phone: newSubmission.guardianPhone,
+          payment_month: newSubmission.paymentMonth,
+          academic_year: newSubmission.academicYear,
+          fee_amount: newSubmission.feeAmount,
+          payment_method: newSubmission.paymentMethod,
+          bank_name: newSubmission.bankName,
+          transaction_date: newSubmission.transactionDate,
+          deposit_reference_no: newSubmission.depositReferenceNo,
+          proof_file_name: newSubmission.proofFileName,
+          proof_url: newSubmission.proofUrl,
+          status: newSubmission.status,
+          created_at: newSubmission.createdAt,
+        } as any);
+      } catch (err) {
+        console.warn("Supabase payment submission insert warning:", err);
+      }
+    }
+
     return {
       success: true,
       paymentRef: generatedRef,
     };
   } catch (err) {
-    console.error("Server Payment Submission Error:", err);
+    console.error("Payment Submission Error:", err);
     return {
       success: false,
       error: "An unexpected server error occurred during submission. Please try again.",
