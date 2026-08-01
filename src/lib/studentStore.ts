@@ -1,7 +1,7 @@
 import { INITIAL_STUDENTS, INITIAL_SUBMISSIONS, Student, PaymentSubmission } from "@/lib/mockData";
 
-const STUDENTS_KEY = "thofnaa_students_roster_v1";
-const SUBMISSIONS_KEY = "thofnaa_payment_submissions_v1";
+const STUDENTS_KEY = "thofnaa_students_roster_v2";
+const SUBMISSIONS_KEY = "thofnaa_payment_submissions_v2";
 
 // ── STUDENT STORE ─────────────────────────────────────────────────────────────
 
