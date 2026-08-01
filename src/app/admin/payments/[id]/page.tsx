@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, use } from "react";
+import React, { useState, useEffect, use, Suspense } from "react";
 import Link from "next/link";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { 
   ArrowLeft, 
   CheckCircle2, 
@@ -36,10 +36,8 @@ import { updatePaymentStatusAction } from "@/app/actions/updatePaymentStatusActi
 import { resendPaymentConfirmationEmailAction } from "@/app/actions/verifyPaymentWorkflowAction";
 import { getStoredSubmissions, getStoredStudents, updateStoredSubmission } from "@/lib/studentStore";
 
-export default function AdminPaymentDetailStudioPage() {
+function PaymentDetailContent({ paymentId }: { paymentId: string }) {
   const router = useRouter();
-  const routeParams = useParams();
-  const paymentId = (routeParams?.id as string) || "";
 
   // Submission and student loaded asynchronously on mount
   const [submission, setSubmission] = useState<PaymentSubmission | null>(null);
@@ -61,6 +59,11 @@ export default function AdminPaymentDetailStudioPage() {
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 
   useEffect(() => {
+    if (!paymentId) {
+      setIsLoading(false);
+      return;
+    }
+
     const subs = getStoredSubmissions();
     const foundSub = subs.find((s) => s.id === paymentId) || INITIAL_SUBMISSIONS.find((s) => s.id === paymentId) || null;
     
@@ -551,5 +554,27 @@ export default function AdminPaymentDetailStudioPage() {
         </div>
       </Modal>
     </div>
+  );
+}
+
+export default function AdminPaymentDetailStudioPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const resolvedParams = use(params);
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-col md:flex-row gap-8 max-w-7xl mx-auto">
+          <AdminSidebar />
+          <div className="flex-1 flex items-center justify-center min-h-[60vh]">
+            <Loader2 className="w-8 h-8 animate-spin text-thofnaa-navy" />
+          </div>
+        </div>
+      }
+    >
+      <PaymentDetailContent paymentId={resolvedParams.id} />
+    </Suspense>
   );
 }

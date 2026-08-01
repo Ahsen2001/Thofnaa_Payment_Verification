@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, use } from "react";
+import React, { useState, useEffect, use, Suspense } from "react";
 import Link from "next/link";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { 
   ArrowLeft, 
   Lock, 
@@ -33,10 +33,8 @@ import { Student } from "@/lib/mockData";
 import { updateStudentAction, deleteStudentAction } from "@/app/actions/updateStudentAction";
 import { getStoredStudents, getStoredSubmissions, updateStoredStudent, deleteStoredStudent } from "@/lib/studentStore";
 
-export default function AdminStudentDetailPage() {
+function StudentDetailContent({ studentId }: { studentId: string }) {
   const router = useRouter();
-  const routeParams = useParams();
-  const studentId = (routeParams?.id as string) || "";
 
   // ── Student data loaded from localStorage on mount ──────────────────────────
   const [student, setStudent] = useState<Student | null>(null);
@@ -66,6 +64,11 @@ export default function AdminStudentDetailPage() {
 
   // Load student from localStorage on mount (client-side only)
   useEffect(() => {
+    if (!studentId) {
+      setIsLoading(false);
+      return;
+    }
+
     const allStudents = getStoredStudents();
     const found = allStudents.find((s) => s.id === studentId) ?? null;
     setStudent(found);
@@ -539,5 +542,27 @@ export default function AdminStudentDetailPage() {
         </div>
       </Modal>
     </div>
+  );
+}
+
+export default function AdminStudentDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const resolvedParams = use(params);
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-col md:flex-row gap-8 max-w-7xl mx-auto">
+          <AdminSidebar />
+          <div className="flex-1 flex items-center justify-center min-h-[60vh]">
+            <Loader2 className="w-8 h-8 animate-spin text-thofnaa-navy" />
+          </div>
+        </div>
+      }
+    >
+      <StudentDetailContent studentId={resolvedParams.id} />
+    </Suspense>
   );
 }
