@@ -408,78 +408,120 @@ export default function AdminDashboardPage() {
                 />
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Registration No</TableHead>
-                      <TableHead>Student Name</TableHead>
-                      <TableHead>Grade & Batch</TableHead>
-                      <TableHead>Payment Month</TableHead>
-                      <TableHead>Amount (LKR)</TableHead>
-                      <TableHead>Submitted At</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paginatedSubmissions.map((sub) => {
-                      const studentRecord = INITIAL_STUDENTS.find(
-                        (s) => s.studentRegNo.toUpperCase() === sub.studentRegNo.toUpperCase()
-                      );
+              <>
+                {/* MOBILE CARDS VIEW (Visible on screens < md) */}
+                <div className="block md:hidden divide-y divide-gray-200">
+                  {paginatedSubmissions.map((sub) => {
+                    const studentRecord = INITIAL_STUDENTS.find(
+                      (s) => s.studentRegNo.toUpperCase() === sub.studentRegNo.toUpperCase()
+                    );
 
-                      return (
-                        <TableRow key={sub.id} className="hover:bg-thofnaa-ivory/50 transition-colors">
-                          <TableCell className="font-mono font-bold text-thofnaa-navy text-xs">
+                    return (
+                      <div key={`mob-${sub.id}`} className="p-4 space-y-3 bg-white hover:bg-thofnaa-ivory/50">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-xs font-bold text-thofnaa-navy bg-thofnaa-ivory px-2.5 py-1 rounded-lg border border-thofnaa-gold/30">
                             {sub.studentRegNo}
-                          </TableCell>
+                          </span>
+                          <StatusBadge status={sub.status as PaymentStatus} size="sm" />
+                        </div>
 
-                          <TableCell className="font-serif font-semibold text-thofnaa-navy text-xs">
-                            {sub.studentName}
-                          </TableCell>
+                        <div>
+                          <h4 className="font-serif font-bold text-sm text-thofnaa-navy">{sub.studentName}</h4>
+                          <div className="flex items-center justify-between text-xs text-thofnaa-charcoal mt-0.5">
+                            <span>{studentRecord?.gradeLevel || "Grade 6 – 11"} ({sub.paymentMonth} {sub.academicYear})</span>
+                            <strong className="font-mono text-thofnaa-emerald">{formatLKR(sub.feeAmount)}</strong>
+                          </div>
+                        </div>
 
-                          <TableCell className="text-xs">
-                            <span className="font-medium text-thofnaa-charcoal">
-                              {studentRecord?.gradeLevel || "Grade 6 – 11"}
-                            </span>
-                            <span className="block text-[10px] text-thofnaa-charcoal-muted font-mono">
-                              {studentRecord?.batch || "Second Language Sinhala"}
-                            </span>
-                          </TableCell>
+                        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                          <span className="text-[10px] font-mono text-gray-400">
+                            Submitted: {new Date(sub.createdAt).toLocaleDateString("en-GB")}
+                          </span>
+                          <Link href={`/admin/payments/${sub.id}`}>
+                            <Button variant="outline" size="sm" leftIcon={<Eye className="w-3.5 h-3.5 text-thofnaa-navy" />}>
+                              Review
+                            </Button>
+                          </Link>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
 
-                          <TableCell className="text-xs">
-                            <span className="font-medium">{sub.paymentMonth} {sub.academicYear}</span>
-                          </TableCell>
+                {/* DESKTOP TABLE VIEW (Visible on screens >= md) */}
+                <div className="hidden md:block overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Registration No</TableHead>
+                        <TableHead>Student Name</TableHead>
+                        <TableHead>Grade & Batch</TableHead>
+                        <TableHead>Payment Month</TableHead>
+                        <TableHead>Amount (LKR)</TableHead>
+                        <TableHead>Submitted At</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedSubmissions.map((sub) => {
+                        const studentRecord = INITIAL_STUDENTS.find(
+                          (s) => s.studentRegNo.toUpperCase() === sub.studentRegNo.toUpperCase()
+                        );
 
-                          <TableCell className="font-mono text-xs font-bold text-thofnaa-emerald">
-                            {formatLKR(sub.feeAmount)}
-                          </TableCell>
+                        return (
+                          <TableRow key={sub.id} className="hover:bg-thofnaa-ivory/50 transition-colors">
+                            <TableCell className="font-mono font-bold text-thofnaa-navy text-xs">
+                              {sub.studentRegNo}
+                            </TableCell>
 
-                          <TableCell className="text-[11px] text-thofnaa-charcoal-muted font-mono">
-                            {new Date(sub.createdAt).toLocaleDateString("en-GB", {
-                              day: "2-digit",
-                              month: "short",
-                              year: "numeric",
-                            })}
-                          </TableCell>
+                            <TableCell className="font-serif font-semibold text-thofnaa-navy text-xs">
+                              {sub.studentName}
+                            </TableCell>
 
-                          <TableCell>
-                            <StatusBadge status={sub.status as PaymentStatus} size="sm" />
-                          </TableCell>
+                            <TableCell className="text-xs">
+                              <span className="font-medium text-thofnaa-charcoal">
+                                {studentRecord?.gradeLevel || "Grade 6 – 11"}
+                              </span>
+                              <span className="block text-[10px] text-thofnaa-charcoal-muted font-mono">
+                                {studentRecord?.batch || "Second Language Sinhala"}
+                              </span>
+                            </TableCell>
 
-                          <TableCell className="text-right">
-                            <Link href={`/admin/payments/${sub.id}`}>
-                              <Button variant="outline" size="sm" leftIcon={<Eye className="w-3.5 h-3.5 text-thofnaa-navy" />}>
-                                Review
-                              </Button>
-                            </Link>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
+                            <TableCell className="text-xs">
+                              <span className="font-medium">{sub.paymentMonth} {sub.academicYear}</span>
+                            </TableCell>
+
+                            <TableCell className="font-mono text-xs font-bold text-thofnaa-emerald">
+                              {formatLKR(sub.feeAmount)}
+                            </TableCell>
+
+                            <TableCell className="text-[11px] text-thofnaa-charcoal-muted font-mono">
+                              {new Date(sub.createdAt).toLocaleDateString("en-GB", {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              })}
+                            </TableCell>
+
+                            <TableCell>
+                              <StatusBadge status={sub.status as PaymentStatus} size="sm" />
+                            </TableCell>
+
+                            <TableCell className="text-right">
+                              <Link href={`/admin/payments/${sub.id}`}>
+                                <Button variant="outline" size="sm" leftIcon={<Eye className="w-3.5 h-3.5 text-thofnaa-navy" />}>
+                                  Review
+                                </Button>
+                              </Link>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
             )}
           </CardContent>
 

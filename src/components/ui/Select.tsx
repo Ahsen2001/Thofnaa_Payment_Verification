@@ -27,12 +27,12 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
             {props.required && <span className="text-red-500 ml-1">*</span>}
           </label>
         )}
-        <div className="relative rounded-lg shadow-sm">
+        <div className="relative rounded-xl shadow-xs">
           <select
             id={selectId}
             ref={ref}
             className={cn(
-              "block w-full appearance-none rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 pr-8 text-sm text-thofnaa-charcoal transition-colors focus:border-thofnaa-navy focus:outline-none focus:ring-2 focus:ring-thofnaa-navy/20 disabled:bg-gray-100 disabled:opacity-75",
+              "block w-full min-h-[48px] sm:min-h-[42px] appearance-none rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 pr-8 text-base sm:text-sm text-thofnaa-charcoal transition-colors focus:border-thofnaa-navy focus:outline-none focus:ring-2 focus:ring-thofnaa-navy/20 disabled:bg-gray-100 disabled:opacity-75 touch-manipulation",
               error && "border-red-500 focus:border-red-500 focus:ring-red-200",
               className
             )}
@@ -54,7 +54,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
               );
             })}
           </select>
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-gray-500">
             <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20">
               <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
             </svg>
