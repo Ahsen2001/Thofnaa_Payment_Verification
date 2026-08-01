@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, use } from "react";
+import React, { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
@@ -15,7 +15,8 @@ import {
   FileText,
   Trash2,
   AlertTriangle,
-  User
+  User,
+  Loader2
 } from "lucide-react";
 import { AdminSidebar } from "@/components/layout/AdminSidebar";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -28,9 +29,9 @@ import { Alert } from "@/components/ui/Alert";
 import { Modal } from "@/components/ui/Modal";
 import { StatusBadge, PaymentStatus } from "@/components/ui/StatusBadge";
 import { formatLKR } from "@/lib/utils";
-import { INITIAL_STUDENTS, INITIAL_SUBMISSIONS } from "@/lib/mockData";
+import { Student } from "@/lib/mockData";
 import { updateStudentAction, deleteStudentAction } from "@/app/actions/updateStudentAction";
-import { getStoredStudents, updateStoredStudent, deleteStoredStudent } from "@/lib/studentStore";
+import { getStoredStudents, getStoredSubmissions, updateStoredStudent, deleteStoredStudent } from "@/lib/studentStore";
 
 export default function AdminStudentDetailPage({
   params,
@@ -41,20 +42,23 @@ export default function AdminStudentDetailPage({
   const resolvedParams = use(params);
   const studentId = resolvedParams.id;
 
-  // Find Student Record from persistent storage
-  const allStudents = getStoredStudents();
-  const student = allStudents.find((s) => s.id === studentId) || allStudents[0];
+  // ── Student data loaded from localStorage on mount ──────────────────────────
+  const [student, setStudent] = useState<Student | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Editable Form States
-  const [fullName, setFullName] = useState(student.fullName.replace(/\[.*?\]\s*/g, ""));
-  const [guardianName, setGuardianName] = useState(student.guardianName.replace(/\[.*?\]\s*/g, ""));
-  const [guardianEmail, setGuardianEmail] = useState(student.guardianEmail);
-  const [whatsappNumber, setWhatsappNumber] = useState(student.whatsappNumber);
-  const [gradeLevel, setGradeLevel] = useState(student.gradeLevel);
-  const [batch, setBatch] = useState(student.batch);
-  const [programme, setProgramme] = useState(student.programme || "Second Language Sinhala");
+  // Editable Form States (initialized once student loads)
+  const [fullName, setFullName] = useState("");
+  const [guardianName, setGuardianName] = useState("");
+  const [guardianEmail, setGuardianEmail] = useState("");
+  const [whatsappNumber, setWhatsappNumber] = useState("");
+  const [gradeLevel, setGradeLevel] = useState("Grade 6");
+  const [batch, setBatch] = useState("Foundation Sinhala");
+  const [programme, setProgramme] = useState("Second Language Sinhala");
   const [monthlyFeeLKR, setMonthlyFeeLKR] = useState(1000);
   const [active, setActive] = useState(true);
+
+  // Payment History
+  const [studentSubmissions, setStudentSubmissions] = useState<ReturnType<typeof getStoredSubmissions>>([]);
 
   // Status & Feedback States
   const [isUpdating, setIsUpdating] = useState(false);
@@ -64,10 +68,32 @@ export default function AdminStudentDetailPage({
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-  // Filter Student Payment History Submissions
-  const studentSubmissions = INITIAL_SUBMISSIONS.filter(
-    (sub) => sub.studentRegNo.toUpperCase() === student.studentRegNo.toUpperCase()
-  );
+  // Load student from localStorage on mount (client-side only)
+  useEffect(() => {
+    const allStudents = getStoredStudents();
+    const found = allStudents.find((s) => s.id === studentId) ?? null;
+    setStudent(found);
+    setIsLoading(false);
+
+    if (found) {
+      setFullName(found.fullName.replace(/\[.*?\]\s*/g, ""));
+      setGuardianName((found.guardianName || "").replace(/\[.*?\]\s*/g, ""));
+      setGuardianEmail(found.guardianEmail || "");
+      setWhatsappNumber(found.whatsappNumber || "");
+      setGradeLevel(found.gradeLevel || "Grade 6");
+      setBatch(found.batch || "Foundation Sinhala");
+      setProgramme(found.programme || "Second Language Sinhala");
+      setActive(found.active !== false);
+
+      // Load payment submissions from persistent store
+      const allSubs = getStoredSubmissions();
+      setStudentSubmissions(
+        allSubs.filter(
+          (sub) => sub.studentRegNo.toUpperCase() === found.studentRegNo.toUpperCase()
+        )
+      );
+    }
+  }, [studentId]);
 
   const handleInitiateUpdate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,6 +109,7 @@ export default function AdminStudentDetailPage({
   };
 
   const handleExecuteConfirmedUpdate = async () => {
+    if (!student) return;
     setIsConfirmModalOpen(false);
     setIsUpdating(true);
     setActionError(null);
@@ -101,6 +128,7 @@ export default function AdminStudentDetailPage({
       active,
     };
     updateStoredStudent(updatedObj);
+    setStudent(updatedObj);
 
     // 2. Trigger server action for DB update & Audit Log
     const result = await updateStudentAction({
@@ -126,6 +154,7 @@ export default function AdminStudentDetailPage({
   };
 
   const handleExecuteDelete = async () => {
+    if (!student) return;
     setIsDeleteModalOpen(false);
     setIsDeleting(true);
 
@@ -143,6 +172,50 @@ export default function AdminStudentDetailPage({
     }
   };
 
+  // ── Loading State ────────────────────────────────────────────────────────────
+  if (isLoading) {
+    return (
+      <div className="flex flex-col md:flex-row gap-8 max-w-7xl mx-auto">
+        <AdminSidebar />
+        <div className="flex-1 flex items-center justify-center min-h-[60vh]">
+          <div className="flex flex-col items-center gap-3 text-thofnaa-charcoal-muted">
+            <Loader2 className="w-8 h-8 animate-spin text-thofnaa-navy" />
+            <span className="text-sm font-mono">Loading student profile…</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Student Not Found ────────────────────────────────────────────────────────
+  if (!student) {
+    return (
+      <div className="flex flex-col md:flex-row gap-8 max-w-7xl mx-auto">
+        <AdminSidebar />
+        <div className="flex-1 flex items-center justify-center min-h-[60vh]">
+          <div className="text-center space-y-4 max-w-sm">
+            <div className="w-16 h-16 rounded-2xl bg-red-50 border border-red-200 flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-8 h-8 text-red-500" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-thofnaa-navy font-serif">Student Not Found</h2>
+              <p className="text-xs text-thofnaa-charcoal-muted mt-1">
+                No student record exists for ID <code className="font-mono bg-gray-100 px-1 rounded">{studentId}</code>.
+                The student may have been deleted, or this link is outdated.
+              </p>
+            </div>
+            <Link href="/admin/students">
+              <Button variant="primary" size="sm" leftIcon={<ArrowLeft className="w-4 h-4" />} className="mt-2">
+                Back to Student Roster
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Main Student Detail UI ───────────────────────────────────────────────────
   return (
     <div className="flex flex-col md:flex-row gap-8 max-w-7xl mx-auto">
       {/* Admin Sidebar */}
