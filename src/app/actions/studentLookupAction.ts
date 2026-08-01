@@ -1,6 +1,7 @@
 "use server";
 
 import { INITIAL_STUDENTS } from "@/lib/mockData";
+import { getStoredStudents } from "@/lib/studentStore";
 
 export interface PublicStudentInfo {
   id: string;
@@ -46,9 +47,9 @@ export async function lookupStudentRegNo(rawRegNo: string): Promise<LookupResult
       };
     }
 
-    // 3. Perform Server-side Lookup
-    // Queries database or fallback mock roster safely on server
-    const matchedStudent = INITIAL_STUDENTS.find(
+    // 3. Perform Lookup (queries browser localStorage store or fallback mock roster in test/server)
+    const allStudents = typeof window !== "undefined" ? getStoredStudents() : INITIAL_STUDENTS;
+    const matchedStudent = allStudents.find(
       (s) => s.studentRegNo.toUpperCase() === normalizedRegNo
     );
 

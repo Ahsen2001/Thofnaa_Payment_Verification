@@ -1,6 +1,7 @@
 "use server";
 
 import { INITIAL_SUBMISSIONS, PaymentSubmission } from "@/lib/mockData";
+import { getStoredSubmissions, addStoredSubmission } from "@/lib/studentStore";
 
 export interface SubmitPaymentInput {
   studentRegNo: string;
@@ -45,7 +46,8 @@ export async function checkPaymentPeriodStatus(
 ): Promise<CheckPeriodResult> {
   const normalizedRegNo = studentRegNo.trim().toUpperCase();
   
-  const existing = INITIAL_SUBMISSIONS.find(
+  const allSubmissions = typeof window !== "undefined" ? getStoredSubmissions() : INITIAL_SUBMISSIONS;
+  const existing = allSubmissions.find(
     (sub) =>
       sub.studentRegNo.toUpperCase() === normalizedRegNo &&
       sub.paymentMonth.toLowerCase() === month.toLowerCase() &&
@@ -179,6 +181,10 @@ export async function submitPaymentForm(input: SubmitPaymentInput): Promise<Subm
     };
 
     INITIAL_SUBMISSIONS.unshift(newSubmission);
+
+    if (typeof window !== "undefined") {
+      addStoredSubmission(newSubmission);
+    }
 
     return {
       success: true,

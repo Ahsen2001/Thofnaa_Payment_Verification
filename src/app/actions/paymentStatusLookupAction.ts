@@ -2,6 +2,7 @@
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { INITIAL_SUBMISSIONS, INITIAL_STUDENTS } from "@/lib/mockData";
+import { getStoredStudents, getStoredSubmissions } from "@/lib/studentStore";
 import { formatNameWithInitials } from "@/lib/utils";
 import { THOFNAA_CONFIG } from "@/lib/constants";
 
@@ -64,8 +65,9 @@ export async function lookupPaymentStatusAction(
       };
     }
 
-    // 2. Validate Matching Student in Database / Mock Dataset
-    const mockStudent = INITIAL_STUDENTS.find(
+    // 2. Validate Matching Student in Database / Mock Dataset / Local Store
+    const allStudents = typeof window !== "undefined" ? getStoredStudents() : INITIAL_STUDENTS;
+    const mockStudent = allStudents.find(
       (s) =>
         s.studentRegNo.toUpperCase() === normalizedRegNo &&
         s.guardianEmail.toLowerCase() === normalizedEmail
@@ -114,7 +116,8 @@ export async function lookupPaymentStatusAction(
     }
 
     // 4. Fetch Payment Submissions for this Student
-    const studentSubmissions = INITIAL_SUBMISSIONS.filter(
+    const allSubmissions = typeof window !== "undefined" ? getStoredSubmissions() : INITIAL_SUBMISSIONS;
+    const studentSubmissions = allSubmissions.filter(
       (s) => s.studentRegNo.toUpperCase() === normalizedRegNo
     );
 

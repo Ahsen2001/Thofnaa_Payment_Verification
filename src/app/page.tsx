@@ -5,6 +5,7 @@ import useRouter from "next/navigation";
 import Link from "next/link";
 import { GraduationCap, Search, ArrowRight, ShieldCheck, CheckCircle2, CreditCard, Sparkles, BookOpen } from "lucide-react";
 import { THOFNAA_CONFIG } from "@/lib/constants";
+import { getStoredStudents } from "@/lib/studentStore";
 import { INITIAL_STUDENTS } from "@/lib/mockData";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -32,7 +33,8 @@ export default function HomePage() {
     setIsSearching(true);
     setTimeout(() => {
       setIsSearching(false);
-      const match = INITIAL_STUDENTS.find(
+      const allStudents = getStoredStudents();
+      const match = allStudents.find(
         (s) => s.studentRegNo.toUpperCase() === formatted
       );
 
