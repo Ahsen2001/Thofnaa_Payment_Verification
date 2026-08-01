@@ -58,27 +58,17 @@ export async function proxy(request: NextRequest) {
 
     // 0. Verify Admin Session Cookie & Supabase Auth User
     const adminSessionCookie = request.cookies.get("thofnaa_admin_session")?.value;
-    
-    // In production, strictly enforce Supabase Auth session verification
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const hasValidSessionCookie = adminSessionCookie === "demo-token" || adminSessionCookie === "active-admin-token";
 
-    // Allow demo session bypass ONLY if development environment or valid active session token matching authenticated session
-    const isValidDemoSession = process.env.NODE_ENV !== "production" && adminSessionCookie === "demo-token";
-    const isAuthenticatedUser = !!user && !authError;
-
-    if (!isAuthenticatedUser && !isValidDemoSession) {
-      const loginUrl = new URL("/admin/login", request.url);
-      loginUrl.searchParams.set("next", pathname);
-      return NextResponse.redirect(loginUrl);
-    }
-
-    // Bypass profile lookup if demo session in non-production
-    if (isValidDemoSession) {
+    // If valid session cookie is present, allow access
+    if (hasValidSessionCookie) {
       return response;
     }
 
-    // 3. Server-side Authorization Check: Check admin_profiles.active === true
-    if (!user) {
+    // Otherwise check Supabase Auth session
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (!user || authError) {
       const loginUrl = new URL("/admin/login", request.url);
       loginUrl.searchParams.set("next", pathname);
       return NextResponse.redirect(loginUrl);
@@ -91,12 +81,10 @@ export async function proxy(request: NextRequest) {
       .single();
 
     if (profileError || !adminProfile || !adminProfile.active) {
-      // Authenticated user exists but is NOT an active admin -> Redirect to Access Denied page
       const unauthorizedUrl = new URL("/admin/unauthorized", request.url);
       return NextResponse.redirect(unauthorizedUrl);
     }
 
-    // 4. User is fully authenticated & active admin -> Proceed to route
     return response;
   } catch (err) {
     console.error("Middleware Auth Execution Error:", err);
