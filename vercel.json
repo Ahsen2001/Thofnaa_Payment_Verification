@@ -1,7 +1,4 @@
 {
-  "version": 2,
-  "buildCommand": "npm run build",
-  "installCommand": "npm install",
   "framework": "nextjs",
   "regions": ["sin1"],
   "headers": [
@@ -13,8 +10,5 @@
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
       ]
     }
-  ],
-  "env": {
-    "NEXT_PUBLIC_SITE_URL": "@next_public_site_url"
-  }
+  ]
 }
