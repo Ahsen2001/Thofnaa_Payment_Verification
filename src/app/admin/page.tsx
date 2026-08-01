@@ -15,7 +15,9 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Eye, 
-  Download, 
+  BarChart3, 
+  TrendingUp, 
+  DollarSign, 
   Calendar, 
   ShieldCheck, 
   GraduationCap 
@@ -33,18 +35,32 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { formatLKR } from "@/lib/utils";
 import { INITIAL_SUBMISSIONS, INITIAL_STUDENTS } from "@/lib/mockData";
 import { THOFNAA_CONFIG } from "@/lib/constants";
+import { calculateFinancialReport } from "@/lib/financialReporting";
 
 export default function AdminDashboardPage() {
   // Filter States
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedMonth, setSelectedMonth] = useState("All");
-  const [selectedYear, setSelectedYear] = useState("All");
+  const [selectedMonth, setSelectedMonth] = useState("February");
+  const [selectedYear, setSelectedYear] = useState("2026");
   const [selectedGrade, setSelectedGrade] = useState("All");
+  const [selectedBatch, setSelectedBatch] = useState("All");
+  const [selectedProgramme, setSelectedProgramme] = useState("All");
   const [selectedStatus, setSelectedStatus] = useState("All");
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
+
+  // Compute Live Financial Report
+  const financialReport = useMemo(() => {
+    return calculateFinancialReport({
+      month: selectedMonth,
+      year: selectedYear,
+      grade: selectedGrade,
+      batch: selectedBatch,
+      programme: selectedProgramme,
+    });
+  }, [selectedMonth, selectedYear, selectedGrade, selectedBatch, selectedProgramme]);
 
   // Compute KPI Metrics from Data
   const pendingCount = INITIAL_SUBMISSIONS.filter((s) => s.status === "PENDING").length;
@@ -96,9 +112,11 @@ export default function AdminDashboardPage() {
 
   const handleResetFilters = () => {
     setSearchQuery("");
-    setSelectedMonth("All");
-    setSelectedYear("All");
+    setSelectedMonth("February");
+    setSelectedYear("2026");
     setSelectedGrade("All");
+    setSelectedBatch("All");
+    setSelectedProgramme("All");
     setSelectedStatus("All");
     setCurrentPage(1);
   };
@@ -112,7 +130,7 @@ export default function AdminDashboardPage() {
       <div className="flex-1 space-y-8 min-w-0">
         <PageHeader
           title="THOFNAA Admin Verification Dashboard"
-          subtitle="Real-time tuition payment verification queue, student roster statistics, and revenue tracking."
+          subtitle="Real-time tuition payment verification queue, financial revenue collection metrics, and student roster statistics."
           badgeText="System Overview"
           action={
             <div className="flex items-center gap-2">
@@ -125,58 +143,159 @@ export default function AdminDashboardPage() {
           }
         />
 
-        {/* 6 KPI DASHBOARD CARDS GRID */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <MetricsCard
-            title="Pending Payments"
-            value={pendingCount}
-            changeText="Requires Admin Action"
-            changeType="warning"
-            icon={<Clock className="w-6 h-6 text-amber-600" />}
-          />
+        {/* 💳 FINANCIAL REVENUE & TUITION COLLECTION REPORT CARD */}
+        <Card goldHeaderBorder className="shadow-lg border-2 border-thofnaa-gold/30">
+          <CardHeader className="bg-thofnaa-navy text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-5">
+            <div>
+              <CardTitle className="text-white text-lg flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-thofnaa-gold" /> Financial Revenue & Tuition Collection Report
+              </CardTitle>
+              <CardDescription className="text-thofnaa-gold text-xs">
+                Monthly breakdown for <strong className="text-white">{financialReport.filterSummary.month} {financialReport.filterSummary.year}</strong> (LKR 1,000 / active student). Only VERIFIED payments count as collected revenue.
+              </CardDescription>
+            </div>
 
-          <MetricsCard
-            title="Verified This Month"
-            value={verifiedMonthCount}
-            changeText="February 2026 Approved"
-            changeType="positive"
-            icon={<CheckCircle2 className="w-6 h-6 text-thofnaa-emerald" />}
-          />
+            <div className="flex items-center gap-2 bg-thofnaa-navy-900 p-2.5 rounded-xl border border-thofnaa-gold/30 font-mono text-xs text-thofnaa-gold">
+              <TrendingUp className="w-4 h-4 text-thofnaa-emerald" />
+              <span>Collection Rate: <strong>{financialReport.collectionPercentage}%</strong></span>
+            </div>
+          </CardHeader>
 
-          <MetricsCard
-            title="Needs Clarification"
-            value={clarificationCount}
-            changeText="Waiting Parent Re-upload"
-            changeType="warning"
-            icon={<AlertTriangle className="w-6 h-6 text-orange-600" />}
-          />
+          <CardContent className="pt-6 space-y-6">
+            {/* Financial Filter Toolbar */}
+            <div className="p-4 rounded-xl bg-thofnaa-ivory border border-thofnaa-gold/30 grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
+              <Select
+                label="Tuition Month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                options={THOFNAA_CONFIG.months}
+              />
 
-          <MetricsCard
-            title="Rejected Submissions"
-            value={rejectedCount}
-            changeText="Invalid Bank Receipts"
-            changeType="negative"
-            icon={<XCircle className="w-6 h-6 text-red-600" />}
-          />
+              <Select
+                label="Academic Year"
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                options={["2026", "2025", "2024"]}
+              />
 
-          <MetricsCard
-            title="Total Revenue Collected"
-            value={formatLKR(totalCollectedLKR)}
-            changeText="Verified Bank Deposits"
-            changeType="positive"
-            icon={<Wallet className="w-6 h-6 text-thofnaa-gold" />}
-          />
+              <Select
+                label="Grade Level"
+                value={selectedGrade}
+                onChange={(e) => setSelectedGrade(e.target.value)}
+                options={["All", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11"]}
+              />
 
-          <MetricsCard
-            title="Enrolled Active Students"
-            value={`${totalActiveStudents} Active`}
-            changeText="Grades 6 – 11 Roster"
-            changeType="neutral"
-            icon={<Users className="w-6 h-6 text-thofnaa-navy" />}
-          />
-        </div>
+              <Select
+                label="Batch Module"
+                value={selectedBatch}
+                onChange={(e) => setSelectedBatch(e.target.value)}
+                options={["All", "Foundation", "Intermediate", "Senior"]}
+              />
 
-        {/* SEARCH & FILTERS PANEL CARD */}
+              <Select
+                label="Programme"
+                value={selectedProgramme}
+                onChange={(e) => setSelectedProgramme(e.target.value)}
+                options={["All", "Second Language Sinhala"]}
+              />
+            </div>
+
+            {/* Financial Revenue Metrics Cards Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              
+              {/* Expected Revenue */}
+              <div className="p-4 rounded-2xl bg-white border border-gray-200 border-l-4 border-l-thofnaa-navy shadow-xs space-y-1">
+                <span className="text-[10px] font-mono uppercase font-bold text-thofnaa-charcoal-muted block">
+                  Total Expected Fees
+                </span>
+                <div className="text-xl font-extrabold font-mono text-thofnaa-navy">
+                  {formatLKR(financialReport.totalExpectedLKR)}
+                </div>
+                <p className="text-[11px] text-thofnaa-charcoal-muted">
+                  {financialReport.activeStudents} Active Students × LKR 1,000
+                </p>
+              </div>
+
+              {/* Verified Revenue (Collected) */}
+              <div className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-200 border-l-4 border-l-thofnaa-emerald shadow-xs space-y-1">
+                <span className="text-[10px] font-mono uppercase font-bold text-emerald-800 block">
+                  Total Collected (Verified)
+                </span>
+                <div className="text-xl font-extrabold font-mono text-thofnaa-emerald">
+                  {formatLKR(financialReport.totalCollectedLKR)}
+                </div>
+                <p className="text-[11px] text-emerald-800 font-semibold">
+                  {financialReport.verifiedCount} Approved Payments ({financialReport.collectionPercentage}%)
+                </p>
+              </div>
+
+              {/* Pending Revenue */}
+              <div className="p-4 rounded-2xl bg-amber-50/50 border border-amber-200 border-l-4 border-l-amber-500 shadow-xs space-y-1">
+                <span className="text-[10px] font-mono uppercase font-bold text-amber-800 block">
+                  Pending Verification
+                </span>
+                <div className="text-xl font-extrabold font-mono text-amber-700">
+                  {formatLKR(financialReport.totalPendingLKR)}
+                </div>
+                <p className="text-[11px] text-amber-800 font-semibold">
+                  {financialReport.pendingCount} Receipts Awaiting Review
+                </p>
+              </div>
+
+              {/* Unpaid / Not Submitted */}
+              <div className="p-4 rounded-2xl bg-red-50/50 border border-red-200 border-l-4 border-l-red-500 shadow-xs space-y-1">
+                <span className="text-[10px] font-mono uppercase font-bold text-red-800 block">
+                  Unpaid / Not Submitted
+                </span>
+                <div className="text-xl font-extrabold font-mono text-red-700">
+                  {formatLKR(financialReport.totalUnpaidLKR)}
+                </div>
+                <p className="text-[11px] text-red-800 font-semibold">
+                  {financialReport.unpaidCount} Active Students Outstanding
+                </p>
+              </div>
+            </div>
+
+            {/* Visual Collection Rate Progress Bar */}
+            <div className="space-y-2 p-4 rounded-xl bg-gray-50 border border-gray-200">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-thofnaa-navy flex items-center gap-1.5">
+                  <BarChart3 className="w-4 h-4 text-thofnaa-emerald" /> Tuition Fee Collection Progress ({selectedMonth} {selectedYear})
+                </span>
+                <span className="font-mono font-bold text-thofnaa-emerald">
+                  {financialReport.collectionPercentage}% Collected ({formatLKR(financialReport.totalCollectedLKR)} / {formatLKR(financialReport.totalExpectedLKR)})
+                </span>
+              </div>
+
+              <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden flex">
+                <div
+                  className="bg-thofnaa-emerald transition-all duration-500 h-full"
+                  style={{ width: `${financialReport.collectionPercentage}%` }}
+                  title={`Verified: ${financialReport.collectionPercentage}%`}
+                />
+                <div
+                  className="bg-amber-400 transition-all duration-500 h-full"
+                  style={{ width: `${financialReport.totalExpectedLKR > 0 ? (financialReport.totalPendingLKR / financialReport.totalExpectedLKR) * 100 : 0}%` }}
+                  title="Pending Verification"
+                />
+                <div
+                  className="bg-red-400 transition-all duration-500 h-full"
+                  style={{ width: `${financialReport.totalExpectedLKR > 0 ? (financialReport.totalUnpaidLKR / financialReport.totalExpectedLKR) * 100 : 0}%` }}
+                  title="Unpaid / Outstanding"
+                />
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] text-thofnaa-charcoal-muted pt-1">
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-thofnaa-emerald inline-block"></span> Verified: {financialReport.verifiedCount}</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span> Pending: {financialReport.pendingCount}</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-400 inline-block"></span> Unpaid: {financialReport.unpaidCount}</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-600 inline-block"></span> Rejected: {financialReport.rejectedCount}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* SEARCH & FILTERS PANEL CARD FOR SUBMISSIONS TABLE */}
         <Card goldHeaderBorder className="shadow-md">
           <CardHeader className="bg-white border-b border-gray-100 pb-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -189,7 +308,7 @@ export default function AdminDashboardPage() {
                 </CardDescription>
               </div>
 
-              {(searchQuery || selectedMonth !== "All" || selectedYear !== "All" || selectedGrade !== "All" || selectedStatus !== "All") && (
+              {(searchQuery || selectedMonth !== "February" || selectedYear !== "2026" || selectedGrade !== "All" || selectedStatus !== "All") && (
                 <Button
                   variant="ghost"
                   size="sm"
