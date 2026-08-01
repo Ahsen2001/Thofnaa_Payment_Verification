@@ -32,12 +32,7 @@ export interface FinancialReportData {
 }
 
 /**
- * THOFNAA FINANCIAL REPORTING CALCULATOR
- * 
- * Rules:
- * 1. Expected Fees = Active Enrolled Students matching filters × LKR 1,000 (or individual monthly fee).
- * 2. Only VERIFIED payments count as collected revenue.
- * 3. Collection Percentage = (Total Verified Revenue / Total Expected Revenue) × 100.
+ * THOFNAA FINANCIAL REPORTING CALCULATOR (Crash-Proof)
  */
 export function calculateFinancialReport(
   filters: FinancialFilterOptions,
@@ -55,13 +50,18 @@ export function calculateFinancialReport(
 
   // 1. Filter Active Students matching Grade, Batch, and Programme criteria
   const matchingStudents = studentList.filter((st) => {
-    if (grade !== "All" && st.gradeLevel.toLowerCase() !== grade.toLowerCase()) {
+    if (!st) return false;
+    const stGrade = st.gradeLevel || "";
+    const stBatch = st.batch || "";
+    const stProg = st.programme || "";
+
+    if (grade !== "All" && stGrade.toLowerCase() !== grade.toLowerCase()) {
       return false;
     }
-    if (batch !== "All" && !st.batch.toLowerCase().includes(batch.toLowerCase())) {
+    if (batch !== "All" && !stBatch.toLowerCase().includes(batch.toLowerCase())) {
       return false;
     }
-    if (programme !== "All" && !st.programme.toLowerCase().includes(programme.toLowerCase())) {
+    if (programme !== "All" && !stProg.toLowerCase().includes(programme.toLowerCase())) {
       return false;
     }
     return true;
@@ -73,24 +73,29 @@ export function calculateFinancialReport(
   const totalExpectedLKR = matchingStudents.reduce((sum, st) => sum + 1000, 0);
 
   // 3. Filter Submissions for target month, year, grade, batch, programme
-  const studentRegNos = new Set(matchingStudents.map((st) => st.studentRegNo.toUpperCase()));
+  const studentRegNos = new Set(matchingStudents.map((st) => (st.studentRegNo || "").toUpperCase()));
 
   const matchingSubmissions = submissionList.filter((sub) => {
-    if (!studentRegNos.has(sub.studentRegNo.toUpperCase())) return false;
-    if (month !== "All" && sub.paymentMonth.toLowerCase() !== month.toLowerCase()) return false;
-    if (year !== "All" && sub.academicYear.toString() !== year) return false;
+    if (!sub) return false;
+    const subRegNo = (sub.studentRegNo || "").toUpperCase();
+    const subMonth = (sub.paymentMonth || "").toLowerCase();
+    const subYear = (sub.academicYear || "").toString();
+
+    if (!studentRegNos.has(subRegNo)) return false;
+    if (month !== "All" && subMonth !== month.toLowerCase()) return false;
+    if (year !== "All" && subYear !== year) return false;
     return true;
   });
 
-  // 4. Calculate Verified Payments (Only VERIFIED count as collected revenue)
+  // 4. Calculate Verified Payments
   const verifiedSubmissions = matchingSubmissions.filter((sub) => sub.status === "VERIFIED");
   const verifiedCount = verifiedSubmissions.length;
-  const totalVerifiedLKR = verifiedSubmissions.reduce((sum, sub) => sum + sub.feeAmount, 0);
+  const totalVerifiedLKR = verifiedSubmissions.reduce((sum, sub) => sum + (sub.feeAmount || 0), 0);
 
   // 5. Calculate Pending Payments
   const pendingSubmissions = matchingSubmissions.filter((sub) => sub.status === "PENDING");
   const pendingCount = pendingSubmissions.length;
-  const totalPendingLKR = pendingSubmissions.reduce((sum, sub) => sum + sub.feeAmount, 0);
+  const totalPendingLKR = pendingSubmissions.reduce((sum, sub) => sum + (sub.feeAmount || 0), 0);
 
   // 6. Calculate Rejected & Clarification Submissions
   const rejectedCount = matchingSubmissions.filter((sub) => sub.status === "REJECTED").length;
@@ -100,7 +105,7 @@ export function calculateFinancialReport(
   const activeStudentRegsWithSubmission = new Set(
     matchingSubmissions
       .filter((sub) => sub.status === "VERIFIED" || sub.status === "PENDING")
-      .map((sub) => sub.studentRegNo.toUpperCase())
+      .map((sub) => (sub.studentRegNo || "").toUpperCase())
   );
 
   const unpaidCount = Math.max(0, activeStudentsCount - activeStudentRegsWithSubmission.size);

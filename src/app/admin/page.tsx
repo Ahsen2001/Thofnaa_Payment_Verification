@@ -91,27 +91,30 @@ export default function AdminDashboardPage() {
   const pendingCount = submissions.filter((s) => s.status === "PENDING").length;
 
   // Filter Submissions Dataset
-  const activeStudentRegNos = useMemo(() => new Set(students.map((s) => s.studentRegNo.toUpperCase())), [students]);
+  const activeStudentRegNos = useMemo(() => new Set(students.map((s) => (s.studentRegNo || "").toUpperCase())), [students]);
 
   const filteredSubmissions = useMemo(() => {
     return submissions.filter((item) => {
-      if (!activeStudentRegNos.has(item.studentRegNo.toUpperCase())) return false;
+      if (!item) return false;
+      const regNo = (item.studentRegNo || "").toUpperCase();
+      if (!activeStudentRegNos.has(regNo)) return false;
+
       // 1. Search Query Filter (Reg No or Student Name)
       if (searchQuery.trim()) {
         const query = searchQuery.trim().toLowerCase();
-        const matchesRegNo = item.studentRegNo.toLowerCase().includes(query);
-        const matchesName = item.studentName.toLowerCase().includes(query);
-        const matchesRef = item.paymentRef.toLowerCase().includes(query);
+        const matchesRegNo = (item.studentRegNo || "").toLowerCase().includes(query);
+        const matchesName = (item.studentName || "").toLowerCase().includes(query);
+        const matchesRef = (item.paymentRef || "").toLowerCase().includes(query);
         if (!matchesRegNo && !matchesName && !matchesRef) return false;
       }
 
       // 2. Month Filter
-      if (selectedMonth !== "All" && item.paymentMonth.toLowerCase() !== selectedMonth.toLowerCase()) {
+      if (selectedMonth !== "All" && (item.paymentMonth || "").toLowerCase() !== selectedMonth.toLowerCase()) {
         return false;
       }
 
       // 3. Year Filter
-      if (selectedYear !== "All" && item.academicYear.toString() !== selectedYear) {
+      if (selectedYear !== "All" && (item.academicYear || "").toString() !== selectedYear) {
         return false;
       }
 
@@ -122,7 +125,7 @@ export default function AdminDashboardPage() {
 
       return true;
     });
-  }, [searchQuery, selectedMonth, selectedYear, selectedStatus, submissions]);
+  }, [activeStudentRegNos, searchQuery, selectedMonth, selectedYear, selectedStatus, submissions]);
 
   // Paginated Results
   const totalPages = Math.ceil(filteredSubmissions.length / itemsPerPage) || 1;

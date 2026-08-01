@@ -156,7 +156,7 @@ export async function lookupPaymentStatusAction(
 
     const history: PaymentHistoryItem[] = monthsList.map((monthName) => {
       const match = studentSubmissions.find(
-        (sub) => sub.paymentMonth.toLowerCase() === monthName.toLowerCase()
+        (sub) => sub && (sub.paymentMonth || "").toLowerCase() === monthName.toLowerCase()
       );
 
       if (!match) {
@@ -169,16 +169,19 @@ export async function lookupPaymentStatusAction(
         };
       }
 
+      const createdDate = match.createdAt ? new Date(match.createdAt) : new Date();
+      const isValidDate = !isNaN(createdDate.getTime());
+
       return {
-        monthYear: `${match.paymentMonth} ${match.academicYear}`,
-        amountLKR: match.feeAmount,
-        status: match.status as PaymentHistoryItem["status"],
+        monthYear: `${match.paymentMonth || monthName} ${match.academicYear || 2026}`,
+        amountLKR: match.feeAmount || 1000,
+        status: (match.status as PaymentHistoryItem["status"]) || "NOT_SUBMITTED",
         paymentReference: match.paymentRef || null,
-        submittedDate: new Date(match.createdAt).toLocaleDateString("en-GB", {
+        submittedDate: isValidDate ? createdDate.toLocaleDateString("en-GB", {
           day: "2-digit",
           month: "short",
           year: "numeric",
-        }),
+        }) : null,
       };
     });
 
