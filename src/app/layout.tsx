@@ -4,6 +4,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { THOFNAA_CONFIG } from "@/lib/constants";
 import { validateEnvOnStartup } from "@/lib/env";
+import { Analytics } from "@vercel/analytics/next";
 
 // Validate all required environment variables on every server boot.
 // In production this throws immediately, preventing a broken deployment
