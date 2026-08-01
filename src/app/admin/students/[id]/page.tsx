@@ -33,7 +33,9 @@ import { Student } from "@/lib/mockData";
 import { updateStudentAction, deleteStudentAction } from "@/app/actions/updateStudentAction";
 import { getStoredStudents, getStoredSubmissions, updateStoredStudent, deleteStoredStudent } from "@/lib/studentStore";
 
-function StudentDetailContent({ studentId }: { studentId: string }) {
+function StudentDetailContent({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params);
+  const studentId = resolvedParams?.id || "";
   const router = useRouter();
 
   // ── Student data loaded from localStorage on mount ──────────────────────────
@@ -550,7 +552,6 @@ export default function AdminStudentDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const resolvedParams = use(params);
   return (
     <Suspense
       fallback={
@@ -562,7 +563,7 @@ export default function AdminStudentDetailPage({
         </div>
       }
     >
-      <StudentDetailContent studentId={resolvedParams.id} />
+      <StudentDetailContent params={params} />
     </Suspense>
   );
 }

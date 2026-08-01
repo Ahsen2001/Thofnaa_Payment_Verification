@@ -36,7 +36,9 @@ import { updatePaymentStatusAction } from "@/app/actions/updatePaymentStatusActi
 import { resendPaymentConfirmationEmailAction } from "@/app/actions/verifyPaymentWorkflowAction";
 import { getStoredSubmissions, getStoredStudents, updateStoredSubmission } from "@/lib/studentStore";
 
-function PaymentDetailContent({ paymentId }: { paymentId: string }) {
+function PaymentDetailContent({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params);
+  const paymentId = resolvedParams?.id || "";
   const router = useRouter();
 
   // Submission and student loaded asynchronously on mount
@@ -562,7 +564,6 @@ export default function AdminPaymentDetailStudioPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const resolvedParams = use(params);
   return (
     <Suspense
       fallback={
@@ -574,7 +575,7 @@ export default function AdminPaymentDetailStudioPage({
         </div>
       }
     >
-      <PaymentDetailContent paymentId={resolvedParams.id} />
+      <PaymentDetailContent params={params} />
     </Suspense>
   );
 }
