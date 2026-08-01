@@ -205,11 +205,14 @@ export async function executePaymentVerificationWorkflow(
  * Resend Action: Allows Admin to retry sending payment confirmation email on demand
  */
 export async function resendPaymentConfirmationEmailAction(
-  paymentId: string,
-  toEmail: string
+  input: { paymentId: string; toEmail?: string } | string,
+  toEmailArg?: string
 ): Promise<{ success: boolean; message?: string; error?: string }> {
   try {
+    const paymentId = typeof input === "string" ? input : input.paymentId;
+    let toEmail = typeof input === "string" ? toEmailArg : input.toEmail;
     const mockRecord = INITIAL_SUBMISSIONS.find((s) => s.id === paymentId);
+    if (!toEmail) toEmail = mockRecord?.guardianEmail || "parent@example.com";
     const paymentRef = mockRecord?.paymentRef || "THF-PAY-26-0001";
     const studentName = mockRecord?.studentName || "Kasun Kalhara Perera";
     const studentRegNo = mockRecord?.studentRegNo || "THF-26-0001";

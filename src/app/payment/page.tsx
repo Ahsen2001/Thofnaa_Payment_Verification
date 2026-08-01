@@ -240,10 +240,11 @@ function PaymentFormContent() {
                   variant="primary"
                   size="md"
                   isLoading={isLookingUp}
+                  disabled={isLookingUp}
                   leftIcon={<Search className="w-4 h-4" />}
                   className="w-full sm:w-auto font-bold"
                 >
-                  Verify Registration
+                  {isLookingUp ? "Searching student..." : "Verify Registration"}
                 </Button>
               </form>
 

@@ -32,6 +32,7 @@ import { Modal } from "@/components/ui/Modal";
 import { formatLKR } from "@/lib/utils";
 import { INITIAL_SUBMISSIONS, INITIAL_STUDENTS, PaymentSubmission } from "@/lib/mockData";
 import { updatePaymentStatusAction } from "@/app/actions/updatePaymentStatusAction";
+import { resendPaymentConfirmationEmailAction } from "@/app/actions/verifyPaymentWorkflowAction";
 
 export default function AdminPaymentDetailStudioPage({
   params,
@@ -54,6 +55,7 @@ export default function AdminPaymentDetailStudioPage({
   const [adminNote, setAdminNote] = useState<string>(submission.rejectionReason || "");
   
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isResendingEmail, setIsResendingEmail] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
@@ -105,6 +107,22 @@ export default function AdminPaymentDetailStudioPage({
     }
   };
 
+  const handleResendEmail = async () => {
+    setIsResendingEmail(true);
+    setActionError(null);
+    setActionSuccess(null);
+
+    // Call resend action
+    const result = await resendPaymentConfirmationEmailAction({ paymentId: submission.id });
+    setIsResendingEmail(false);
+
+    if (result.success) {
+      setActionSuccess(result.message || "Confirmation email successfully resent to parent.");
+    } else {
+      setActionError(result.error || "Failed to resend confirmation email.");
+    }
+  };
+
   return (
     <div className="flex flex-col md:flex-row gap-8 max-w-7xl mx-auto">
       {/* Admin Navigation Sidebar */}
@@ -117,11 +135,26 @@ export default function AdminPaymentDetailStudioPage({
           subtitle="Detailed student registration profile, payment proof receipt inspection, and decision workflow."
           badgeText="Verification Studio"
           action={
-            <Link href="/admin/payments">
-              <Button variant="outline" size="sm" leftIcon={<ArrowLeft className="w-4 h-4" />}>
-                Back to Queue
-              </Button>
-            </Link>
+            <div className="flex items-center gap-2">
+              {currentStatus === "VERIFIED" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  isLoading={isResendingEmail}
+                  disabled={isResendingEmail}
+                  onClick={handleResendEmail}
+                  leftIcon={<Mail className="w-4 h-4 text-purple-600" />}
+                  className="bg-purple-50 text-purple-900 border-purple-200 hover:bg-purple-100"
+                >
+                  {isResendingEmail ? "Sending confirmation email..." : "Resend Email"}
+                </Button>
+              )}
+              <Link href="/admin/payments">
+                <Button variant="outline" size="sm" leftIcon={<ArrowLeft className="w-4 h-4" />}>
+                  Back to Queue
+                </Button>
+              </Link>
+            </div>
           }
         />
 
@@ -367,12 +400,12 @@ export default function AdminPaymentDetailStudioPage({
                     variant="success"
                     size="lg"
                     isLoading={isUpdating}
-                    disabled={currentStatus === "VERIFIED"}
+                    disabled={currentStatus === "VERIFIED" || isUpdating}
                     onClick={() => handleInitiateDecision("VERIFIED")}
                     leftIcon={<CheckCircle2 className="w-5 h-5" />}
                     className="w-full font-bold shadow-md text-xs py-3"
                   >
-                    {currentStatus === "VERIFIED" ? "✓ Already Verified" : "VERIFY PAYMENT & ASSIGN REF"}
+                    {isUpdating ? "Verifying payment..." : currentStatus === "VERIFIED" ? "✓ Already Verified" : "VERIFY PAYMENT & ASSIGN REF"}
                   </Button>
 
                   <Button
@@ -380,11 +413,12 @@ export default function AdminPaymentDetailStudioPage({
                     variant="secondary"
                     size="md"
                     isLoading={isUpdating}
+                    disabled={isUpdating}
                     onClick={() => handleInitiateDecision("NEEDS_CLARIFICATION")}
                     leftIcon={<AlertTriangle className="w-4 h-4 text-thofnaa-navy" />}
                     className="w-full font-bold text-xs bg-orange-100 hover:bg-orange-200 text-orange-950 border-orange-300"
                   >
-                    NEEDS CLARIFICATION
+                    {isUpdating ? "Requesting clarification..." : "NEEDS CLARIFICATION"}
                   </Button>
 
                   <Button
@@ -392,11 +426,12 @@ export default function AdminPaymentDetailStudioPage({
                     variant="danger"
                     size="md"
                     isLoading={isUpdating}
+                    disabled={isUpdating}
                     onClick={() => handleInitiateDecision("REJECTED")}
                     leftIcon={<XCircle className="w-4 h-4" />}
                     className="w-full font-bold text-xs"
                   >
-                    REJECT PAYMENT
+                    {isUpdating ? "Rejecting payment..." : "REJECT PAYMENT"}
                   </Button>
                 </div>
               </CardContent>
