@@ -18,6 +18,8 @@ import {
   Plus,
   Upload,
   Edit3,
+  Trash2,
+  AlertTriangle,
   FileSpreadsheet,
   AlertCircle,
   Check
@@ -34,6 +36,7 @@ import { Modal } from "@/components/ui/Modal";
 import { formatLKR } from "@/lib/utils";
 import { INITIAL_STUDENTS, Student } from "@/lib/mockData";
 import { bulkImportStudentsAction, bulkEditStudentsAction, BulkStudentRowInput } from "@/app/actions/bulkStudentActions";
+import { deleteStudentAction } from "@/app/actions/updateStudentAction";
 
 export default function AdminStudentsPage() {
   // Filter States
@@ -48,6 +51,7 @@ export default function AdminStudentsPage() {
   // Modal States
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
+  const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
 
   // Bulk Import Form State
   const [csvText, setCsvText] = useState("");
@@ -58,6 +62,7 @@ export default function AdminStudentsPage() {
   const [bulkEditGrade, setBulkEditGrade] = useState("Keep Same");
   const [bulkEditBatch, setBulkEditBatch] = useState("Keep Same");
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [editSuccessMessage, setEditSuccessMessage] = useState<string | null>(null);
 
   // Pagination State
@@ -190,6 +195,14 @@ export default function AdminStudentsPage() {
         setSelectedStudentIds([]);
       }, 1200);
     }
+  };
+
+  const handleExecuteDeleteStudent = async () => {
+    if (!studentToDelete) return;
+    setIsDeleting(true);
+    await deleteStudentAction(studentToDelete.id);
+    setIsDeleting(false);
+    setStudentToDelete(null);
   };
 
   return (
@@ -433,12 +446,24 @@ export default function AdminStudentsPage() {
                           </span>
                         </TableCell>
 
-                        <TableCell className="text-right">
-                          <Link href={`/admin/students/${st.id}`}>
-                            <Button variant="outline" size="sm" leftIcon={<Eye className="w-3.5 h-3.5 text-thofnaa-navy" />}>
-                              View / Edit
+                        <TableCell className="text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Link href={`/admin/students/${st.id}`}>
+                              <Button variant="outline" size="sm" leftIcon={<Eye className="w-3.5 h-3.5 text-thofnaa-navy" />}>
+                                Edit
+                              </Button>
+                            </Link>
+
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setStudentToDelete(st)}
+                              aria-label={`Delete student ${st.studentRegNo}`}
+                              className="text-red-600 border-red-200 hover:bg-red-50 p-2"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-red-600" />
                             </Button>
-                          </Link>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -616,6 +641,43 @@ export default function AdminStudentsPage() {
               <Check className="w-4 h-4 text-thofnaa-emerald" /> {editSuccessMessage}
             </div>
           )}
+        </div>
+      </Modal>
+
+      {/* MODAL 3: DELETE SINGLE STUDENT */}
+      <Modal
+        isOpen={!!studentToDelete}
+        onClose={() => setStudentToDelete(null)}
+        title="Delete Student Record"
+        description="Permanently remove student registration from the institute database."
+      >
+        <div className="space-y-4 text-xs">
+          <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-900 flex items-start gap-2">
+            <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+            <div>
+              <strong className="block font-bold">Warning: Permanent Deletion</strong>
+              Are you sure you want to delete student profile <strong className="font-serif text-thofnaa-navy">{studentToDelete?.fullName}</strong> (<code className="font-mono">{studentToDelete?.studentRegNo}</code>)?
+            </div>
+          </div>
+
+          <p className="text-thofnaa-charcoal-muted">
+            This action will remove the student record. An immutable audit log entry (<code className="font-mono">DELETE_STUDENT_RECORD</code>) will be recorded.
+          </p>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+            <Button variant="outline" size="sm" onClick={() => setStudentToDelete(null)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="primary" 
+              size="sm" 
+              isLoading={isDeleting}
+              onClick={handleExecuteDeleteStudent} 
+              className="bg-red-600 hover:bg-red-700 text-white font-bold"
+            >
+              Permanently Delete Student
+            </Button>
+          </div>
         </div>
       </Modal>
     </div>
