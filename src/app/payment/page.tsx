@@ -229,7 +229,7 @@ function PaymentFormContent() {
                   value={regNoInput}
                   onChange={(e) => setRegNoInput(e.target.value.toUpperCase())}
                   leftIcon={<GraduationCap className="w-4 h-4" />}
-                  helperText="Format: THF-YY-NNNN (Demo IDs: THF-26-0001, THF-26-0002, THF-26-0003)"
+                  helperText="Format: THF-YY-NNNN (e.g. THF-26-0001)"
                   required
                 />
 

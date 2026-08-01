@@ -15,11 +15,32 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { lookupPaymentStatusAction } from "@/app/actions/paymentStatusLookupAction";
+import { INITIAL_STUDENTS, INITIAL_SUBMISSIONS, Student, PaymentSubmission } from "@/lib/mockData";
 
 // ── Test constants from mock data ─────────────────────────────────────────────
 const VALID_REG_NO = "THF-26-0001"; // Kasun – has VERIFIED Jan submission
 const VALID_EMAIL = "demo.parent.kasun@example.com";
 const WRONG_EMAIL = "wrong.email@example.com";
+
+const TEST_STUDENTS: Student[] = [
+  { id: "std-001", studentRegNo: "THF-26-0001", fullName: "Kasun Kalhara Perera", gradeLevel: "Grade 6", batch: "Foundation Sinhala", programme: "Second Language Sinhala", guardianName: "Sunil Perera", guardianEmail: "demo.parent.kasun@example.com", guardianPhone: "+94 77 000 0001", whatsappNumber: "+94 77 000 0001", createdAt: "2026-01-05" },
+];
+
+const TEST_SUBMISSIONS: PaymentSubmission[] = [
+  { id: "sub-101", paymentRef: "THF-PAY-26-0001", studentId: "std-001", studentRegNo: "THF-26-0001", studentName: "Kasun Kalhara Perera", guardianEmail: "demo.parent.kasun@example.com", guardianPhone: "+94 77 000 0001", paymentMonth: "January", academicYear: 2026, feeAmount: 1000, paymentMethod: "Online Bank Transfer", bankName: "People's Bank", transactionDate: "2026-01-28", depositReferenceNo: "PB-998231", proofFileName: "kasun_jan_receipt.pdf", proofUrl: "https://example.com/proof.pdf", status: "VERIFIED", adminNotes: "Matched.", verifiedAt: "2026-01-29T10:15:00Z", createdAt: "2026-01-28T14:20:00Z" },
+];
+
+beforeAll(() => {
+  INITIAL_STUDENTS.length = 0;
+  INITIAL_STUDENTS.push(...TEST_STUDENTS);
+  INITIAL_SUBMISSIONS.length = 0;
+  INITIAL_SUBMISSIONS.push(...TEST_SUBMISSIONS);
+});
+
+afterAll(() => {
+  INITIAL_STUDENTS.length = 0;
+  INITIAL_SUBMISSIONS.length = 0;
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 

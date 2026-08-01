@@ -14,7 +14,21 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { lookupStudentRegNo } from "@/app/actions/studentLookupAction";
-import { INITIAL_STUDENTS } from "@/lib/mockData";
+import { INITIAL_STUDENTS, Student } from "@/lib/mockData";
+
+const TEST_STUDENTS: Student[] = [
+  { id: "std-001", studentRegNo: "THF-26-0001", fullName: "Kasun Kalhara Perera", gradeLevel: "Grade 6", batch: "Foundation Sinhala", programme: "Second Language Sinhala", guardianName: "Sunil Perera", guardianEmail: "demo.parent.kasun@example.com", guardianPhone: "+94 77 000 0001", whatsappNumber: "+94 77 000 0001", createdAt: "2026-01-05" },
+  { id: "std-004", studentRegNo: "THF-26-0004", fullName: "Ruwan Wickremasinghe", gradeLevel: "Grade 9", batch: "Intermediate Sinhala", programme: "Second Language Sinhala", guardianName: "Gamini Wickremasinghe", guardianEmail: "demo.parent.ruwan@example.com", guardianPhone: "+94 77 000 0004", whatsappNumber: "+94 77 000 0004", createdAt: "2026-01-18", active: false },
+];
+
+beforeAll(() => {
+  INITIAL_STUDENTS.length = 0;
+  INITIAL_STUDENTS.push(...TEST_STUDENTS);
+});
+
+afterAll(() => {
+  INITIAL_STUDENTS.length = 0;
+});
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 

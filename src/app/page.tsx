@@ -109,7 +109,7 @@ export default function HomePage() {
                   value={regNoInput}
                   onChange={(e) => setRegNoInput(e.target.value)}
                   leftIcon={<GraduationCap className="w-4 h-4" />}
-                  helperText="Format must match THF-26-XXXX (Demo IDs: THF-26-0001, THF-26-0002, THF-26-0003)"
+                  helperText="Format: THF-YY-NNNN (e.g. THF-26-0001)"
                   required
                 />
 
