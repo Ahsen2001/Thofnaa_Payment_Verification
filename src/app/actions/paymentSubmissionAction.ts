@@ -19,6 +19,7 @@ export interface SubmitPaymentInput {
   proofFileName: string;
   proofFileSizeMB: number;
   proofFileType: string;
+  proofDataUrl?: string;
 }
 
 export interface CheckPeriodResult {
@@ -174,7 +175,7 @@ export async function submitPaymentForm(input: SubmitPaymentInput): Promise<Subm
       transactionDate: input.paymentDate,
       depositReferenceNo: input.bankReference || "N/A",
       proofFileName: input.proofFileName,
-      proofUrl: "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=800&auto=format&fit=crop&q=80",
+      proofUrl: input.proofDataUrl || "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=800&auto=format&fit=crop&q=80",
       status: "PENDING",
       createdAt: new Date().toISOString(),
     };

@@ -156,6 +156,18 @@ function PaymentFormContent() {
 
     setIsSubmitting(true);
 
+    let proofDataUrl: string | undefined = undefined;
+    try {
+      proofDataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(proofFile);
+      });
+    } catch (err) {
+      console.warn("Failed to read proof file as Data URL:", err);
+    }
+
     const result = await submitPaymentForm({
       studentRegNo: confirmedStudent.registrationNo,
       studentName: confirmedStudent.nameWithInitials,
@@ -173,6 +185,7 @@ function PaymentFormContent() {
       proofFileName: proofFile.name,
       proofFileSizeMB: proofFile.size / (1024 * 1024),
       proofFileType: proofFile.type,
+      proofDataUrl,
     });
 
     setIsSubmitting(false);
