@@ -127,6 +127,10 @@ export default function AdminStudentDetailPage({
     setIsDeleting(false);
 
     if (result.success) {
+      const idx = INITIAL_STUDENTS.findIndex((s) => s.id === student.id);
+      if (idx !== -1) {
+        INITIAL_STUDENTS.splice(idx, 1);
+      }
       router.push("/admin/students");
     } else {
       setActionError(result.error || "Failed to delete student record.");

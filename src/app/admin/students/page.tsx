@@ -200,8 +200,18 @@ export default function AdminStudentsPage() {
   const handleExecuteDeleteStudent = async () => {
     if (!studentToDelete) return;
     setIsDeleting(true);
-    await deleteStudentAction(studentToDelete.id);
+    const targetId = studentToDelete.id;
+    const result = await deleteStudentAction(targetId);
     setIsDeleting(false);
+
+    if (result.success) {
+      const idx = INITIAL_STUDENTS.findIndex((s) => s.id === targetId);
+      if (idx !== -1) {
+        INITIAL_STUDENTS.splice(idx, 1);
+      }
+      setSelectedStudentIds((prev) => prev.filter((id) => id !== targetId));
+      setCurrentPage(1);
+    }
     setStudentToDelete(null);
   };
 
@@ -327,7 +337,7 @@ export default function AdminStudentsPage() {
         </Card>
 
         {/* STUDENT ROSTER TABLE CARD */}
-        <Card goldHeaderBorder className="shadow-md">
+        <Card goldHeaderBorder className="shadow-md overflow-hidden">
           <CardHeader className="bg-thofnaa-navy text-white flex flex-row items-center justify-between py-4">
             <div>
               <CardTitle className="text-white text-base">Enrolled Students List</CardTitle>
@@ -351,11 +361,11 @@ export default function AdminStudentsPage() {
                 />
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
+              <div className="overflow-x-auto w-full">
+                <Table className="w-full">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-10">
+                      <TableHead className="w-10 whitespace-nowrap">
                         <input
                           type="checkbox"
                           checked={
@@ -367,17 +377,17 @@ export default function AdminStudentsPage() {
                           aria-label="Select all on page"
                         />
                       </TableHead>
-                      <TableHead>Registration No</TableHead>
-                      <TableHead>Student Name</TableHead>
-                      <TableHead>Grade</TableHead>
-                      <TableHead>Batch</TableHead>
-                      <TableHead>Programme</TableHead>
-                      <TableHead>Parent Name</TableHead>
-                      <TableHead>WhatsApp</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Fee (LKR)</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Action</TableHead>
+                      <TableHead className="whitespace-nowrap">Registration No</TableHead>
+                      <TableHead className="whitespace-nowrap">Student Name</TableHead>
+                      <TableHead className="whitespace-nowrap">Grade</TableHead>
+                      <TableHead className="whitespace-nowrap">Batch</TableHead>
+                      <TableHead className="whitespace-nowrap">Programme</TableHead>
+                      <TableHead className="whitespace-nowrap">Parent Name</TableHead>
+                      <TableHead className="whitespace-nowrap">WhatsApp</TableHead>
+                      <TableHead className="whitespace-nowrap">Email</TableHead>
+                      <TableHead className="whitespace-nowrap">Fee (LKR)</TableHead>
+                      <TableHead className="whitespace-nowrap">Status</TableHead>
+                      <TableHead className="text-right whitespace-nowrap">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -386,7 +396,7 @@ export default function AdminStudentsPage() {
                         key={st.id} 
                         className={`hover:bg-thofnaa-ivory/50 transition-colors ${selectedStudentIds.includes(st.id) ? "bg-amber-50/60" : ""}`}
                       >
-                        <TableCell>
+                        <TableCell className="whitespace-nowrap">
                           <input
                             type="checkbox"
                             checked={selectedStudentIds.includes(st.id)}
@@ -396,52 +406,52 @@ export default function AdminStudentsPage() {
                           />
                         </TableCell>
 
-                        <TableCell className="font-mono font-bold text-thofnaa-navy text-xs">
+                        <TableCell className="font-mono font-bold text-thofnaa-navy text-xs whitespace-nowrap">
                           {st.studentRegNo}
                         </TableCell>
 
-                        <TableCell className="font-serif font-semibold text-thofnaa-navy text-xs">
+                        <TableCell className="font-serif font-semibold text-thofnaa-navy text-xs whitespace-nowrap">
                           {st.fullName}
                         </TableCell>
 
-                        <TableCell className="text-xs font-medium">
+                        <TableCell className="text-xs font-medium whitespace-nowrap">
                           {st.gradeLevel}
                         </TableCell>
 
-                        <TableCell className="text-xs text-thofnaa-charcoal">
+                        <TableCell className="text-xs text-thofnaa-charcoal whitespace-nowrap">
                           {st.batch}
                         </TableCell>
 
-                        <TableCell className="text-[11px] text-thofnaa-charcoal-muted truncate max-w-[140px]">
+                        <TableCell className="text-[11px] text-thofnaa-charcoal-muted whitespace-nowrap">
                           {st.programme}
                         </TableCell>
 
-                        <TableCell className="text-xs text-thofnaa-charcoal">
+                        <TableCell className="text-xs text-thofnaa-charcoal whitespace-nowrap">
                           {st.guardianName}
                         </TableCell>
 
-                        <TableCell className="text-xs">
+                        <TableCell className="text-xs whitespace-nowrap">
                           <a
                             href={`https://wa.me/${st.whatsappNumber.replace(/[^0-9]/g, "")}`}
                             target="_blank"
                             rel="noreferrer"
-                            className="font-mono text-emerald-800 hover:underline flex items-center gap-1 font-semibold"
+                            className="font-mono text-emerald-800 hover:underline inline-flex items-center gap-1 font-semibold whitespace-nowrap"
                           >
-                            <Phone className="w-3 h-3 text-thofnaa-emerald" />
-                            {st.whatsappNumber}
+                            <Phone className="w-3 h-3 text-thofnaa-emerald shrink-0" />
+                            <span>{st.whatsappNumber}</span>
                           </a>
                         </TableCell>
 
-                        <TableCell className="text-xs font-mono text-thofnaa-charcoal-muted truncate max-w-[150px]">
+                        <TableCell className="text-xs font-mono text-thofnaa-charcoal-muted whitespace-nowrap">
                           {st.guardianEmail}
                         </TableCell>
 
-                        <TableCell className="font-mono text-xs font-bold text-thofnaa-emerald">
+                        <TableCell className="font-mono text-xs font-bold text-thofnaa-emerald whitespace-nowrap">
                           {formatLKR(1000)}
                         </TableCell>
 
-                        <TableCell>
-                          <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full font-mono">
+                        <TableCell className="whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full font-mono whitespace-nowrap">
                             <CheckCircle2 className="w-3 h-3 text-thofnaa-emerald" /> ACTIVE
                           </span>
                         </TableCell>
