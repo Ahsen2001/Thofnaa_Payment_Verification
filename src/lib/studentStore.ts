@@ -13,14 +13,14 @@ export function getStoredStudents(): Student[] {
   try {
     const raw = localStorage.getItem(STUDENTS_KEY);
     if (!raw) {
-      localStorage.setItem(STUDENTS_KEY, JSON.stringify(INITIAL_STUDENTS));
-      return INITIAL_STUDENTS;
+      localStorage.setItem(STUDENTS_KEY, JSON.stringify([]));
+      return [];
     }
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : INITIAL_STUDENTS;
+    return Array.isArray(parsed) ? parsed : [];
   } catch (err) {
     console.warn("Failed to load students from localStorage:", err);
-    return INITIAL_STUDENTS;
+    return [];
   }
 }
 
@@ -56,7 +56,6 @@ export function deleteStoredStudent(studentId: string): void {
   const filtered = current.filter((s) => s.id !== studentId);
   saveStoredStudents(filtered);
 
-  // Also remove payment submissions associated with this deleted student
   if (target) {
     deleteSubmissionsForStudent(target.studentRegNo);
   }
@@ -81,16 +80,15 @@ export function getStoredSubmissions(): PaymentSubmission[] {
 
   try {
     const raw = localStorage.getItem(SUBMISSIONS_KEY);
-    let list: PaymentSubmission[] = INITIAL_SUBMISSIONS;
+    let list: PaymentSubmission[] = [];
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) list = parsed;
     }
-    // Strictly return submissions belonging to currently enrolled active students
     return list.filter((sub) => activeRegNos.has(sub.studentRegNo.toUpperCase()));
   } catch (err) {
     console.warn("Failed to load submissions from localStorage:", err);
-    return INITIAL_SUBMISSIONS.filter((sub) => activeRegNos.has(sub.studentRegNo.toUpperCase()));
+    return [];
   }
 }
 

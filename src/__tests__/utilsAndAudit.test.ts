@@ -140,17 +140,25 @@ describe("TC-UT: Utility Functions (utils.ts)", () => {
 
 describe("TC-AL: Audit Log Engine (auditLogs.ts)", () => {
   // ── TC-AL-05 Pre-seeded logs ──────────────────────────────────────────────
-  describe("TC-AL-05 – INITIAL_AUDIT_LOGS is pre-seeded", () => {
-    it("contains at least one pre-seeded audit entry", () => {
-      expect(INITIAL_AUDIT_LOGS.length).toBeGreaterThan(0);
+  describe("TC-AL-05 – INITIAL_AUDIT_LOGS configuration", () => {
+    it("is an array ready for audit records", () => {
+      expect(Array.isArray(INITIAL_AUDIT_LOGS)).toBe(true);
     });
 
-    it("first entry has required fields: id, action, entityType, timestamp", () => {
-      const first = INITIAL_AUDIT_LOGS[0];
-      expect(first.id).toBeTruthy();
-      expect(first.action).toBeTruthy();
-      expect(first.entityType).toBeTruthy();
-      expect(first.timestamp).toBeTruthy();
+    it("recordAuditLog generates entries with required fields: id, action, entityType, timestamp", () => {
+      const rec = recordAuditLog({
+        adminName: "Umer Ahsen",
+        adminEmail: "admin@thofnaa.edu.lk",
+        action: "student_updated",
+        entityType: "students",
+        entityId: "std-001",
+        entityRef: "THF-26-0001",
+        newValues: { test: true },
+      });
+      expect(rec.id).toBeTruthy();
+      expect(rec.action).toBe("student_updated");
+      expect(rec.entityType).toBe("students");
+      expect(rec.timestamp).toBeTruthy();
     });
   });
 

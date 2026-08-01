@@ -21,7 +21,8 @@ import {
   Trash2,
   AlertTriangle,
   FileSpreadsheet,
-  Check
+  Check,
+  UserPlus
 } from "lucide-react";
 import { AdminSidebar } from "@/components/layout/AdminSidebar";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -34,6 +35,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Modal } from "@/components/ui/Modal";
 import { formatLKR } from "@/lib/utils";
 import { Student } from "@/lib/mockData";
+import { getBatchForGrade } from "@/lib/programmes";
 import { bulkImportStudentsAction, bulkEditStudentsAction, BulkStudentRowInput } from "@/app/actions/bulkStudentActions";
 import { deleteStudentAction } from "@/app/actions/updateStudentAction";
 import { getStoredStudents, deleteStoredStudent, addStoredStudents, saveStoredStudents } from "@/lib/studentStore";
@@ -63,9 +65,26 @@ export default function AdminStudentsPage() {
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
 
   // Modal States
+  const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
+
+  // Add Single Student Form State
+  const [newRegNo, setNewRegNo] = useState("");
+  const [newFullName, setNewFullName] = useState("");
+  const [newGradeLevel, setNewGradeLevel] = useState("Grade 6");
+  const [newBatch, setNewBatch] = useState("Foundation Sinhala");
+  const [newProgramme, setNewProgramme] = useState("Second Language Sinhala");
+  const [newGuardianName, setNewGuardianName] = useState("");
+  const [newGuardianEmail, setNewGuardianEmail] = useState("");
+  const [newWhatsappNumber, setNewWhatsappNumber] = useState("+94 ");
+  const [newMonthlyFee, setNewMonthlyFee] = useState("1000");
+  const [newStatus, setNewStatus] = useState("Active");
+
+  const [addStudentError, setAddStudentError] = useState<string | null>(null);
+  const [addStudentSuccess, setAddStudentSuccess] = useState<string | null>(null);
+  const [isAddingStudent, setIsAddingStudent] = useState(false);
 
   // Bulk Import Form State
   const [csvText, setCsvText] = useState("");
@@ -82,6 +101,101 @@ export default function AdminStudentsPage() {
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
+
+  // Auto update batch when grade changes in Add Modal
+  const handleGradeChangeInAddModal = (grade: string) => {
+    setNewGradeLevel(grade);
+    const resolvedBatch = getBatchForGrade(grade);
+    if (resolvedBatch) {
+      setNewBatch(resolvedBatch.name);
+    }
+  };
+
+  // Open Add Student Modal with auto-suggested Registration Number
+  const handleOpenAddStudentModal = () => {
+    setAddStudentError(null);
+    setAddStudentSuccess(null);
+
+    const currentRegNos = new Set(students.map((s) => s.studentRegNo.toUpperCase()));
+    let nextNum = students.length + 1;
+    let suggested = `THF-26-${String(nextNum).padStart(4, "0")}`;
+    while (currentRegNos.has(suggested)) {
+      nextNum++;
+      suggested = `THF-26-${String(nextNum).padStart(4, "0")}`;
+    }
+
+    setNewRegNo(suggested);
+    setNewFullName("");
+    setNewGuardianName("");
+    setNewGuardianEmail("");
+    setNewWhatsappNumber("+94 ");
+    setNewGradeLevel("Grade 6");
+    setNewBatch("Foundation Sinhala");
+    setNewProgramme("Second Language Sinhala");
+    setNewMonthlyFee("1000");
+    setNewStatus("Active");
+    setIsAddStudentModalOpen(true);
+  };
+
+  // Execute Adding Single Student
+  const handleExecuteAddStudent = () => {
+    setAddStudentError(null);
+    setAddStudentSuccess(null);
+
+    const regNoFormatted = newRegNo.trim().toUpperCase();
+    if (!regNoFormatted) {
+      setAddStudentError("Registration number is required.");
+      return;
+    }
+
+    if (!newFullName.trim()) {
+      setAddStudentError("Student full name is required.");
+      return;
+    }
+
+    if (!newGuardianEmail.trim() || !newGuardianEmail.includes("@")) {
+      setAddStudentError("Valid parent email address is required.");
+      return;
+    }
+
+    if (!newWhatsappNumber.trim() || newWhatsappNumber.trim().length < 8) {
+      setAddStudentError("Valid WhatsApp contact number is required.");
+      return;
+    }
+
+    // Check duplicate Registration Number
+    const existing = students.find((s) => s.studentRegNo.toUpperCase() === regNoFormatted);
+    if (existing) {
+      setAddStudentError(`Registration number "${regNoFormatted}" already exists in the system.`);
+      return;
+    }
+
+    setIsAddingStudent(true);
+
+    const newStudentObj: Student = {
+      id: `std-${Date.now()}`,
+      studentRegNo: regNoFormatted,
+      fullName: newFullName.trim(),
+      gradeLevel: newGradeLevel,
+      batch: newBatch,
+      programme: newProgramme,
+      guardianName: newGuardianName.trim() || "Parent / Guardian",
+      guardianEmail: newGuardianEmail.trim().toLowerCase(),
+      guardianPhone: newWhatsappNumber.trim(),
+      whatsappNumber: newWhatsappNumber.trim(),
+      active: newStatus === "Active",
+      createdAt: new Date().toISOString(),
+    };
+
+    addStoredStudents([newStudentObj]);
+    setIsAddingStudent(false);
+    setAddStudentSuccess(`Student "${newStudentObj.fullName}" (${newStudentObj.studentRegNo}) added successfully!`);
+
+    setTimeout(() => {
+      setIsAddStudentModalOpen(false);
+      setStudents(getStoredStudents());
+    }, 1000);
+  };
 
   // Filter Roster Dataset
   const filteredStudents = useMemo(() => {
@@ -252,11 +366,21 @@ export default function AdminStudentsPage() {
               <Button
                 variant="primary"
                 size="sm"
-                onClick={() => setIsImportModalOpen(true)}
-                leftIcon={<Plus className="w-4 h-4" />}
-                className="font-bold shadow-sm text-xs"
+                onClick={handleOpenAddStudentModal}
+                leftIcon={<UserPlus className="w-4 h-4" />}
+                className="font-bold shadow-sm text-xs bg-thofnaa-navy hover:bg-thofnaa-navy-900"
               >
-                Bulk Import Students
+                Add New Student
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsImportModalOpen(true)}
+                leftIcon={<Plus className="w-4 h-4 text-thofnaa-navy" />}
+                className="font-bold shadow-sm text-xs bg-white text-thofnaa-navy border-thofnaa-gold"
+              >
+                Bulk CSV Import
               </Button>
 
               {selectedStudentIds.length > 0 && (
@@ -372,11 +496,11 @@ export default function AdminStudentsPage() {
             {paginatedStudents.length === 0 ? (
               <div className="py-12">
                 <EmptyState
-                  title="No students match your criteria"
-                  description="Try clearing your search query or grade/batch filters."
+                  title="No enrolled students in system"
+                  description="Use 'Add New Student' to register a student manually, or import students via CSV."
                   action={
-                    <Button variant="outline" size="sm" onClick={handleResetFilters}>
-                      Clear All Filters
+                    <Button variant="primary" size="sm" onClick={handleOpenAddStudentModal} leftIcon={<UserPlus className="w-4 h-4" />}>
+                      Add First Student
                     </Button>
                   }
                 />
@@ -554,6 +678,130 @@ export default function AdminStudentsPage() {
           )}
         </Card>
       </div>
+
+      {/* MODAL 0: ADD NEW SINGLE STUDENT */}
+      <Modal
+        isOpen={isAddStudentModalOpen}
+        onClose={() => setIsAddStudentModalOpen(false)}
+        title="Add New Student Record"
+        description="Manually enter student details, registration number, parent email, and WhatsApp contact."
+        maxWidth="lg"
+        footer={
+          <div className="flex items-center justify-end gap-2 w-full">
+            <Button variant="outline" size="sm" onClick={() => setIsAddStudentModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              isLoading={isAddingStudent}
+              onClick={handleExecuteAddStudent}
+              leftIcon={<UserPlus className="w-4 h-4" />}
+              className="bg-thofnaa-navy hover:bg-thofnaa-navy-900"
+            >
+              Add Student Record
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Registration Number (Manual Input)"
+              placeholder="e.g. THF-26-0001"
+              value={newRegNo}
+              onChange={(e) => setNewRegNo(e.target.value)}
+              helperText="Manually type or edit registration number."
+              required
+            />
+
+            <Input
+              label="Student Full Name"
+              placeholder="e.g. Kasun Perera"
+              value={newFullName}
+              onChange={(e) => setNewFullName(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Select
+              label="Grade Level"
+              value={newGradeLevel}
+              onChange={(e) => handleGradeChangeInAddModal(e.target.value)}
+              options={["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11"]}
+            />
+
+            <Select
+              label="Batch Module"
+              value={newBatch}
+              onChange={(e) => setNewBatch(e.target.value)}
+              options={["Foundation Sinhala", "Intermediate Sinhala", "Senior / O/L Sinhala"]}
+            />
+
+            <Select
+              label="Programme"
+              value={newProgramme}
+              onChange={(e) => setNewProgramme(e.target.value)}
+              options={["Second Language Sinhala"]}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Parent / Guardian Name"
+              placeholder="e.g. Sunil Perera"
+              value={newGuardianName}
+              onChange={(e) => setNewGuardianName(e.target.value)}
+            />
+
+            <Input
+              label="Parent Email Address"
+              type="email"
+              placeholder="parent@example.com"
+              value={newGuardianEmail}
+              onChange={(e) => setNewGuardianEmail(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Input
+              label="WhatsApp Contact Number"
+              placeholder="+94 77 000 0001"
+              value={newWhatsappNumber}
+              onChange={(e) => setNewWhatsappNumber(e.target.value)}
+              required
+            />
+
+            <Input
+              label="Monthly Fee (LKR)"
+              value={newMonthlyFee}
+              onChange={(e) => setNewMonthlyFee(e.target.value)}
+              disabled
+            />
+
+            <Select
+              label="Account Status"
+              value={newStatus}
+              onChange={(e) => setNewStatus(e.target.value)}
+              options={["Active", "Inactive"]}
+            />
+          </div>
+
+          {addStudentError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-800 font-bold flex items-center gap-1.5">
+              <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" /> {addStudentError}
+            </div>
+          )}
+
+          {addStudentSuccess && (
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 font-bold flex items-center gap-1.5">
+              <Check className="w-4 h-4 text-thofnaa-emerald shrink-0" /> {addStudentSuccess}
+            </div>
+          )}
+        </div>
+      </Modal>
 
       {/* MODAL 1: BULK IMPORT STUDENTS */}
       <Modal
