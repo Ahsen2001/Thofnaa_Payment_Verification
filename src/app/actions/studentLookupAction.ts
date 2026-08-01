@@ -79,9 +79,10 @@ export async function lookupStudentRegNo(rawRegNo: string): Promise<LookupResult
       }
     }
 
-    // 4. Fallback to browser localStorage store or INITIAL_STUDENTS if not found in Supabase
+    // 4. Fallback to browser localStorage store + INITIAL_STUDENTS if not found in Supabase
     if (!matchedStudent) {
-      const allStudents = typeof window !== "undefined" ? getStoredStudents() : INITIAL_STUDENTS;
+      const localStore = typeof window !== "undefined" ? getStoredStudents() : [];
+      const allStudents = [...localStore, ...INITIAL_STUDENTS];
       matchedStudent = allStudents.find(
         (s) => s.studentRegNo.toUpperCase() === normalizedRegNo
       );

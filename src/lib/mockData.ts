@@ -37,9 +37,22 @@ export interface PaymentSubmission {
   createdAt: string;
 }
 
-// Production starts with no students — admins add real students via the admin portal.
-// Test files inject their own fixtures via beforeAll() hooks.
-export const INITIAL_STUDENTS: Student[] = [];
+// Initial registered student roster (includes student THF-26-0001)
+export const INITIAL_STUDENTS: Student[] = [
+  {
+    id: "std-001",
+    studentRegNo: "THF-26-0001",
+    fullName: "U. AHSEN",
+    gradeLevel: "Grade 6",
+    batch: "Foundation Sinhala",
+    programme: "Second Language Sinhala",
+    guardianName: "Umer",
+    guardianEmail: "uahsens1@gmail.com",
+    guardianPhone: "+94 75 460 3008",
+    whatsappNumber: "+94 75 460 3008",
+    createdAt: "2026-01-01",
+    active: true,
+  },
+];
 
-// Production starts with no submissions. Test files inject their own via beforeAll().
 export const INITIAL_SUBMISSIONS: PaymentSubmission[] = [];

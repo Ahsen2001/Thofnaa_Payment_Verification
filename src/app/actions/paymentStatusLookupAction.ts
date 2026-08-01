@@ -86,7 +86,8 @@ export async function lookupPaymentStatusAction(
 
     // Fallback to localStorage / INITIAL_STUDENTS
     if (!matchingStudent) {
-      const allStudents = typeof window !== "undefined" ? getStoredStudents() : INITIAL_STUDENTS;
+      const localStore = typeof window !== "undefined" ? getStoredStudents() : [];
+      const allStudents = [...localStore, ...INITIAL_STUDENTS];
       const mockStudent = allStudents.find(
         (s) =>
           s.studentRegNo.toUpperCase() === normalizedRegNo &&
