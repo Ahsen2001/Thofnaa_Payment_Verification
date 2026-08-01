@@ -1,303 +1,475 @@
 "use client";
 
-import React, { useState, use } from "react";
+import React, { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
   ArrowLeft, 
   CheckCircle2, 
+  AlertTriangle, 
   XCircle, 
-  AlertCircle, 
   FileText, 
-  ZoomIn, 
-  ExternalLink, 
+  Eye, 
+  Download, 
   Mail, 
-  ShieldCheck, 
+  Phone, 
+  GraduationCap, 
+  Calendar, 
   Clock, 
-  User, 
-  Calendar,
-  Send
+  ShieldCheck, 
+  Lock,
+  ExternalLink,
+  MessageSquareText
 } from "lucide-react";
-import { INITIAL_SUBMISSIONS, PaymentSubmission } from "@/lib/mockData";
+import { AdminSidebar } from "@/components/layout/AdminSidebar";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { StatusBadge } from "@/components/ui/StatusBadge";
-import { Input } from "@/components/ui/Input";
+import { StatusBadge, PaymentStatus } from "@/components/ui/StatusBadge";
 import { FormError } from "@/components/ui/FormError";
+import { Alert } from "@/components/ui/Alert";
+import { Modal } from "@/components/ui/Modal";
+import { formatLKR } from "@/lib/utils";
+import { INITIAL_SUBMISSIONS, INITIAL_STUDENTS, PaymentSubmission } from "@/lib/mockData";
+import { updatePaymentStatusAction } from "@/app/actions/updatePaymentStatusAction";
 
-export default function AdminPaymentDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function AdminPaymentDetailStudioPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const resolvedParams = use(params);
+  const paymentId = resolvedParams.id;
   const router = useRouter();
 
-  const [submission, setSubmission] = useState<PaymentSubmission>(() => {
-    return (
-      INITIAL_SUBMISSIONS.find((s) => s.id === resolvedParams.id) || INITIAL_SUBMISSIONS[1]
-    );
-  });
+  // Find payment submission record
+  const submission = INITIAL_SUBMISSIONS.find((s) => s.id === paymentId) || INITIAL_SUBMISSIONS[0];
+  const studentRecord = INITIAL_STUDENTS.find(
+    (s) => s.studentRegNo.toUpperCase() === submission.studentRegNo.toUpperCase()
+  ) || INITIAL_STUDENTS[0];
 
-  const [actionType, setActionType] = useState<"VERIFY" | "CLARIFICATION" | "REJECT">("VERIFY");
-  const [adminNote, setAdminNote] = useState("");
-  const [rejectionReason, setRejectionReason] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  // Local Component States
+  const [currentStatus, setCurrentStatus] = useState<PaymentStatus>(submission.status as PaymentStatus);
+  const [paymentRef, setPaymentRef] = useState<string | null>(submission.paymentRef);
+  const [adminNote, setAdminNote] = useState<string>(submission.rejectionReason || "");
+  
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
-  const handleAction = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsProcessing(true);
+  // Modal Confirmation State
+  const [pendingDecision, setPendingDecision] = useState<"VERIFIED" | "NEEDS_CLARIFICATION" | "REJECTED" | null>(null);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 
-    setTimeout(() => {
-      setIsProcessing(false);
-      let updatedStatus: PaymentSubmission["status"] = "VERIFIED";
+  // File Proof Signed URL Simulation
+  const isPdfFile = submission.proofFileName?.toLowerCase().endsWith(".pdf") || false;
+  const proofPreviewUrl = submission.proofUrl;
 
-      if (actionType === "VERIFY") {
-        updatedStatus = "VERIFIED";
-        setToastMessage(`Payment ${submission.paymentRef} verified successfully! Email receipt triggered to ${submission.guardianEmail}.`);
-      } else if (actionType === "CLARIFICATION") {
-        updatedStatus = "CLARIFICATION_NEEDED";
-        setToastMessage(`Clarification requested. Email sent to ${submission.guardianEmail}.`);
-      } else {
-        updatedStatus = "REJECTED";
-        setToastMessage(`Submission rejected. Notice emailed to ${submission.guardianEmail}.`);
+  const handleInitiateDecision = (decision: "VERIFIED" | "NEEDS_CLARIFICATION" | "REJECTED") => {
+    setActionError(null);
+    setActionSuccess(null);
+
+    // Validate required admin note for Reject or Needs Clarification
+    if ((decision === "REJECTED" || decision === "NEEDS_CLARIFICATION") && !adminNote.trim()) {
+      setActionError(`An administrator note/reason is strictly required when marking a payment as "${decision.replace("_", " ")}".`);
+      return;
+    }
+
+    setPendingDecision(decision);
+    setIsConfirmModalOpen(true);
+  };
+
+  const handleExecuteConfirmedDecision = async () => {
+    if (!pendingDecision) return;
+
+    setIsConfirmModalOpen(false);
+    setIsUpdating(true);
+    setActionError(null);
+
+    const result = await updatePaymentStatusAction({
+      paymentId: submission.id,
+      status: pendingDecision,
+      adminNote,
+    });
+
+    setIsUpdating(false);
+
+    if (result.success) {
+      setCurrentStatus(pendingDecision as PaymentStatus);
+      if (result.paymentRef) {
+        setPaymentRef(result.paymentRef);
       }
-
-      setSubmission((prev) => ({
-        ...prev,
-        status: updatedStatus,
-        adminNotes: adminNote || prev.adminNotes,
-        rejectionReason: rejectionReason || prev.rejectionReason,
-        verifiedAt: new Date().toISOString(),
-      }));
-    }, 800);
+      setActionSuccess(result.message || `Payment status updated to ${pendingDecision}.`);
+    } else {
+      setActionError(result.error || "Failed to update payment status.");
+    }
   };
 
   return (
-    <div className="space-y-8">
-      <PageHeader
-        title={`Verification Review: ${submission.paymentRef}`}
-        subtitle={`Submitted by ${submission.studentName} (${submission.studentRegNo}) for ${submission.paymentMonth} ${submission.academicYear}`}
-        badgeText="Verification Studio"
-        action={
-          <Link href="/admin/payments">
-            <Button variant="outline" size="sm" leftIcon={<ArrowLeft className="w-4 h-4" />}>
-              Back to Verification Queue
-            </Button>
-          </Link>
-        }
-      />
+    <div className="flex flex-col md:flex-row gap-8 max-w-7xl mx-auto">
+      {/* Admin Navigation Sidebar */}
+      <AdminSidebar />
 
-      {toastMessage && (
-        <div className="p-4 rounded-xl bg-thofnaa-navy text-white border-2 border-thofnaa-gold flex items-center justify-between shadow-md animate-in fade-in duration-300">
-          <div className="flex items-center gap-3 text-xs">
-            <CheckCircle2 className="w-5 h-5 text-thofnaa-gold shrink-0" />
-            <span>{toastMessage}</span>
-          </div>
-          <button onClick={() => setToastMessage(null)} className="text-thofnaa-gold text-xs font-bold underline">
-            Dismiss
-          </button>
-        </div>
-      )}
+      {/* Main Payment Studio Content */}
+      <div className="flex-1 space-y-8 min-w-0">
+        <PageHeader
+          title={`Review Submission: ${submission.studentRegNo}`}
+          subtitle="Detailed student registration profile, payment proof receipt inspection, and decision workflow."
+          badgeText="Verification Studio"
+          action={
+            <Link href="/admin/payments">
+              <Button variant="outline" size="sm" leftIcon={<ArrowLeft className="w-4 h-4" />}>
+                Back to Queue
+              </Button>
+            </Link>
+          }
+        />
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Left Column (6 cols): Payment Proof Viewer */}
-        <div className="lg:col-span-6 space-y-6">
-          <Card goldHeaderBorder className="shadow-md">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-thofnaa-navy" />
-                  Uploaded Receipt Proof
-                </CardTitle>
-                <CardDescription>{submission.proofFileName}</CardDescription>
-              </div>
-              <a
-                href={submission.proofUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 text-xs font-semibold text-thofnaa-navy hover:text-thofnaa-emerald"
-              >
-                <ExternalLink className="w-3.5 h-3.5" /> Full Size
-              </a>
-            </CardHeader>
+        {/* DOUBLE VERIFICATION LOCK BANNER */}
+        {currentStatus === "VERIFIED" && (
+          <Alert variant="success" title="Payment Verified & Approved">
+            This payment record has been officially verified. Payment Reference Code{" "}
+            <strong className="font-mono text-thofnaa-navy">{paymentRef}</strong> is assigned and email receipt dispatched to parent.
+          </Alert>
+        )}
 
-            <CardContent className="p-4 bg-gray-900 rounded-b-xl text-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={submission.proofUrl}
-                alt="Payment Proof Receipt"
-                className="max-h-[500px] w-auto mx-auto rounded-lg shadow-lg border border-gray-700 object-contain"
-              />
-              <p className="text-[11px] text-gray-400 mt-2">
-                Verify receipt reference code against People&apos;s Bank account <strong className="font-mono text-white">167200230025623</strong>.
-              </p>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          
+          {/* Left Column (7 cols): Details & Proof Viewer */}
+          <div className="lg:col-span-7 space-y-6">
+            
+            {/* STUDENT & PAYMENT DETAILS CARD */}
+            <Card goldHeaderBorder className="shadow-md">
+              <CardHeader className="bg-white border-b border-gray-100 flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="text-base text-thofnaa-navy">Student & Payment Profile</CardTitle>
+                  <CardDescription>Official THOFNAA registration and tuition deposit details.</CardDescription>
+                </div>
+                <StatusBadge status={currentStatus} size="md" />
+              </CardHeader>
 
-          {/* Deposit Comparison Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-serif">Bank Statement Cross-Check</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-xs">
-              <div className="flex justify-between py-1.5 border-b border-gray-100">
-                <span className="text-thofnaa-charcoal-muted">Bank Name:</span>
-                <strong className="text-thofnaa-navy">{submission.bankName}</strong>
-              </div>
-              <div className="flex justify-between py-1.5 border-b border-gray-100">
-                <span className="text-thofnaa-charcoal-muted">Claimed Deposit Ref:</span>
-                <strong className="text-thofnaa-navy font-mono font-bold">{submission.depositReferenceNo}</strong>
-              </div>
-              <div className="flex justify-between py-1.5 border-b border-gray-100">
-                <span className="text-thofnaa-charcoal-muted">Deposit Date:</span>
-                <strong className="text-thofnaa-navy">{submission.transactionDate}</strong>
-              </div>
-              <div className="flex justify-between py-1.5">
-                <span className="text-thofnaa-charcoal-muted">Claimed Amount:</span>
-                <strong className="text-thofnaa-emerald font-mono font-bold">LKR {submission.feeAmount.toLocaleString()}.00</strong>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              <CardContent className="space-y-6 pt-5">
+                
+                {/* 1. STUDENT REGISTRATION DETAILS */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-thofnaa-navy uppercase tracking-wider font-mono border-b border-gray-100 pb-1 flex items-center gap-1.5">
+                    <GraduationCap className="w-4 h-4 text-thofnaa-gold" />
+                    1. Student Registration Profile
+                  </h4>
 
-        {/* Right Column (6 cols): Action Panel & Status */}
-        <div className="lg:col-span-6 space-y-6">
-          {/* Current Status Banner */}
-          <Card className="bg-white shadow-xs">
-            <CardContent className="p-5 flex items-center justify-between">
-              <div className="space-y-1">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-thofnaa-charcoal-muted block">
-                  Current Status
-                </span>
-                <StatusBadge status={submission.status} size="lg" />
-              </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs bg-thofnaa-ivory p-4 rounded-xl border border-thofnaa-gold/30">
+                    <div>
+                      <span className="text-thofnaa-charcoal-muted block font-mono text-[10px] uppercase">Registration No</span>
+                      <strong className="text-thofnaa-navy font-mono text-sm">{submission.studentRegNo}</strong>
+                    </div>
 
-              <div className="text-right text-xs text-thofnaa-charcoal-muted space-y-0.5">
-                <span>Guardian Email:</span>
-                <p className="font-mono text-thofnaa-navy font-bold">{submission.guardianEmail}</p>
-              </div>
-            </CardContent>
-          </Card>
+                    <div>
+                      <span className="text-thofnaa-charcoal-muted block font-mono text-[10px] uppercase">Student Name</span>
+                      <strong className="text-thofnaa-navy font-serif text-sm">{submission.studentName}</strong>
+                    </div>
 
-          {/* Action Form Card */}
-          <Card goldHeaderBorder className="shadow-md">
-            <CardHeader className="bg-thofnaa-navy-50/60">
-              <CardTitle className="text-base">Administrative Action & Email Trigger</CardTitle>
-              <CardDescription>
-                Select action below. Updating status automatically triggers Resend email to guardian.
-              </CardDescription>
-            </CardHeader>
+                    <div>
+                      <span className="text-thofnaa-charcoal-muted block font-mono text-[10px] uppercase">Grade Level</span>
+                      <strong className="text-thofnaa-navy">{studentRecord.gradeLevel}</strong>
+                    </div>
 
-            <CardContent className="p-6 space-y-6">
-              {/* Action Mode Toggle Buttons */}
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setActionType("VERIFY")}
-                  className={`p-3 rounded-lg border text-xs font-bold flex flex-col items-center gap-1.5 transition-all ${
-                    actionType === "VERIFY"
-                      ? "bg-thofnaa-emerald text-white border-thofnaa-emerald shadow-md"
-                      : "bg-white text-thofnaa-charcoal border-gray-200 hover:bg-gray-50"
-                  }`}
-                >
-                  <CheckCircle2 className="w-5 h-5" />
-                  <span>Approve & Verify</span>
-                </button>
+                    <div>
+                      <span className="text-thofnaa-charcoal-muted block font-mono text-[10px] uppercase">Batch / Module</span>
+                      <strong className="text-thofnaa-navy">{studentRecord.batch || "Foundation Sinhala"}</strong>
+                    </div>
 
-                <button
-                  type="button"
-                  onClick={() => setActionType("CLARIFICATION")}
-                  className={`p-3 rounded-lg border text-xs font-bold flex flex-col items-center gap-1.5 transition-all ${
-                    actionType === "CLARIFICATION"
-                      ? "bg-orange-500 text-white border-orange-500 shadow-md"
-                      : "bg-white text-thofnaa-charcoal border-gray-200 hover:bg-gray-50"
-                  }`}
-                >
-                  <AlertCircle className="w-5 h-5" />
-                  <span>Need Clarification</span>
-                </button>
+                    <div className="col-span-2">
+                      <span className="text-thofnaa-charcoal-muted block font-mono text-[10px] uppercase">Programme</span>
+                      <strong className="text-thofnaa-navy">{studentRecord.programme || "Second Language Sinhala"}</strong>
+                    </div>
+                  </div>
+                </div>
 
-                <button
-                  type="button"
-                  onClick={() => setActionType("REJECT")}
-                  className={`p-3 rounded-lg border text-xs font-bold flex flex-col items-center gap-1.5 transition-all ${
-                    actionType === "REJECT"
-                      ? "bg-red-600 text-white border-red-600 shadow-md"
-                      : "bg-white text-thofnaa-charcoal border-gray-200 hover:bg-gray-50"
-                  }`}
-                >
-                  <XCircle className="w-5 h-5" />
-                  <span>Reject Payment</span>
-                </button>
-              </div>
+                {/* 2. PAYMENT DEPOSIT DETAILS */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-thofnaa-navy uppercase tracking-wider font-mono border-b border-gray-100 pb-1 flex items-center gap-1.5">
+                    <Calendar className="w-4 h-4 text-thofnaa-gold" />
+                    2. Payment Deposit Information
+                  </h4>
 
-              <form onSubmit={handleAction} className="space-y-4">
-                {actionType === "VERIFY" && (
-                  <div className="p-3.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 space-y-1">
-                    <p className="font-bold">✔ Approving Submission:</p>
-                    <p className="text-[11px] text-emerald-800 leading-relaxed">
-                      Status will change to <strong className="font-mono">VERIFIED</strong>. Resend will send an official tuition confirmation receipt to <strong>{submission.guardianEmail}</strong> with PDF download link.
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs bg-white p-4 rounded-xl border border-gray-200">
+                    <div>
+                      <span className="text-thofnaa-charcoal-muted block font-mono text-[10px] uppercase">Tuition Month</span>
+                      <strong className="text-thofnaa-navy text-sm font-semibold">{submission.paymentMonth} {submission.academicYear}</strong>
+                    </div>
+
+                    <div>
+                      <span className="text-thofnaa-charcoal-muted block font-mono text-[10px] uppercase">Amount Paid</span>
+                      <strong className="text-thofnaa-emerald font-mono text-sm font-extrabold">{formatLKR(submission.feeAmount)}</strong>
+                    </div>
+
+                    <div>
+                      <span className="text-thofnaa-charcoal-muted block font-mono text-[10px] uppercase">Transfer Date</span>
+                      <strong className="text-thofnaa-navy font-mono">{submission.transactionDate}</strong>
+                    </div>
+
+                    <div>
+                      <span className="text-thofnaa-charcoal-muted block font-mono text-[10px] uppercase">Payment Method</span>
+                      <strong className="text-thofnaa-navy">{submission.paymentMethod}</strong>
+                    </div>
+
+                    <div>
+                      <span className="text-thofnaa-charcoal-muted block font-mono text-[10px] uppercase">Bank Reference</span>
+                      <strong className="text-thofnaa-navy font-mono">{submission.depositReferenceNo || "N/A"}</strong>
+                    </div>
+
+                    <div>
+                      <span className="text-thofnaa-charcoal-muted block font-mono text-[10px] uppercase">Submitted At</span>
+                      <strong className="text-thofnaa-charcoal font-mono text-[11px]">
+                        {new Date(submission.createdAt).toLocaleString("en-GB", {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        })}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. PARENT CONTACT CHANNELS */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-thofnaa-navy uppercase tracking-wider font-mono border-b border-gray-100 pb-1 flex items-center gap-1.5">
+                    <Phone className="w-4 h-4 text-thofnaa-gold" />
+                    3. Parent Contact Channels
+                  </h4>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <a
+                      href={`mailto:${submission.guardianEmail}`}
+                      className="p-3 rounded-xl bg-gray-50 border border-gray-200 hover:border-thofnaa-navy flex items-center gap-2 transition-colors group"
+                    >
+                      <Mail className="w-4 h-4 text-thofnaa-navy group-hover:scale-110 transition-transform" />
+                      <div>
+                        <span className="text-thofnaa-charcoal-muted block text-[10px] uppercase font-mono">Parent Email</span>
+                        <span className="font-semibold text-thofnaa-navy">{submission.guardianEmail}</span>
+                      </div>
+                    </a>
+
+                    <a
+                      href={`https://wa.me/${submission.guardianPhone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hello, this is THOFNAA INSTITUTE regarding payment submission ${paymentRef || submission.studentRegNo}.`)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 hover:border-emerald-500 flex items-center gap-2 transition-colors group"
+                    >
+                      <Phone className="w-4 h-4 text-thofnaa-emerald group-hover:scale-110 transition-transform" />
+                      <div>
+                        <span className="text-emerald-800 block text-[10px] uppercase font-mono font-bold">WhatsApp Contact</span>
+                        <span className="font-semibold text-emerald-950 font-mono">{submission.guardianPhone}</span>
+                      </div>
+                    </a>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* PAYMENT PROOF RECEIPT VIEWER CARD */}
+            <Card goldHeaderBorder className="shadow-md">
+              <CardHeader className="bg-thofnaa-navy text-white flex flex-row items-center justify-between py-4">
+                <div>
+                  <CardTitle className="text-white text-base flex items-center gap-2">
+                    <Lock className="w-4 h-4 text-thofnaa-gold" /> Secure Payment Proof Receipt
+                  </CardTitle>
+                  <CardDescription className="text-thofnaa-gold text-xs">
+                    Temporary signed URL generated from private bucket <strong className="font-mono">payment-proofs</strong>.
+                  </CardDescription>
+                </div>
+
+                <a href={proofPreviewUrl} target="_blank" rel="noreferrer">
+                  <Button variant="outline" size="sm" className="bg-white/10 text-white border-white/30 hover:bg-white hover:text-thofnaa-navy text-xs">
+                    <ExternalLink className="w-3.5 h-3.5" /> Open Full
+                  </Button>
+                </a>
+              </CardHeader>
+
+              <CardContent className="p-6">
+                {!isPdfFile ? (
+                  <div className="space-y-4">
+                    <div className="relative rounded-2xl overflow-hidden border-2 border-gray-200 bg-gray-900 group max-h-[450px] flex items-center justify-center">
+                      <img
+                        src={proofPreviewUrl}
+                        alt={`Payment proof deposit receipt for ${submission.studentRegNo}`}
+                        className="max-h-[450px] w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+                      />
+                    </div>
+                    <p className="text-[11px] text-center text-thofnaa-charcoal-muted font-mono">
+                      File: {submission.proofFileName} • High-Resolution Bank Deposit Receipt
                     </p>
                   </div>
-                )}
-
-                {actionType === "CLARIFICATION" && (
-                  <div className="space-y-2">
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-thofnaa-charcoal">
-                      Reason for Clarification Request <span className="text-red-500">*</span>
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={rejectionReason}
-                      onChange={(e) => setRejectionReason(e.target.value)}
-                      placeholder="e.g. Receipt image is blurry. Please re-upload a clear deposit slip."
-                      className="w-full rounded-lg border border-gray-300 p-3 text-xs focus:border-thofnaa-navy focus:outline-none"
-                      required
-                    />
+                ) : (
+                  <div className="p-8 rounded-2xl bg-thofnaa-ivory border-2 border-dashed border-thofnaa-navy/30 text-center space-y-4">
+                    <div className="w-16 h-16 rounded-2xl bg-thofnaa-navy/10 text-thofnaa-navy flex items-center justify-center mx-auto">
+                      <FileText className="w-8 h-8" />
+                    </div>
+                    <div>
+                      <h4 className="font-serif font-bold text-thofnaa-navy text-base">PDF Document Receipt</h4>
+                      <p className="text-xs text-thofnaa-charcoal-muted font-mono mt-1">{submission.proofFileName}</p>
+                    </div>
+                    <a href={proofPreviewUrl} target="_blank" rel="noreferrer" className="inline-block">
+                      <Button variant="primary" size="md" leftIcon={<Eye className="w-4 h-4" />}>
+                        View Secure PDF Document
+                      </Button>
+                    </a>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </div>
 
-                {actionType === "REJECT" && (
-                  <div className="space-y-2">
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-thofnaa-charcoal">
-                      Reason for Rejection <span className="text-red-500">*</span>
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={rejectionReason}
-                      onChange={(e) => setRejectionReason(e.target.value)}
-                      placeholder="e.g. Transaction ID does not match any deposit on People's Bank statement."
-                      className="w-full rounded-lg border border-gray-300 p-3 text-xs focus:border-thofnaa-navy focus:outline-none"
-                      required
-                    />
-                  </div>
+          {/* Right Column (5 cols): Admin Decision Studio */}
+          <div className="lg:col-span-5 space-y-6">
+            
+            <Card goldHeaderBorder className="shadow-lg border-2 border-thofnaa-navy/20">
+              <CardHeader className="bg-thofnaa-navy text-white">
+                <CardTitle className="text-white text-base flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-thofnaa-gold" /> Admin Verification Decision
+                </CardTitle>
+                <CardDescription className="text-thofnaa-gold text-xs">
+                  Review receipt details and execute status update.
+                </CardDescription>
+              </CardHeader>
+
+              <CardContent className="space-y-5 pt-6">
+                
+                {/* Admin Note Textarea */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-thofnaa-navy flex items-center justify-between">
+                    <span>Admin Review Note / Reason</span>
+                    <span className="text-[10px] text-gray-400 font-normal">Required for Reject / Clarification</span>
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={adminNote}
+                    onChange={(e) => setAdminNote(e.target.value)}
+                    placeholder="Enter reason or note for parent (e.g. Deposit slip reference PB-998231 matched on People's Bank statement, or Please re-upload clear un-cropped receipt)."
+                    className="w-full p-3 bg-white border border-gray-300 rounded-xl text-xs text-thofnaa-charcoal placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-thofnaa-navy focus:border-transparent transition-all"
+                  />
+                </div>
+
+                <FormError message={actionError} />
+                {actionSuccess && (
+                  <Alert variant="success" title="Success">
+                    {actionSuccess}
+                  </Alert>
                 )}
 
-                <Input
-                  label="Internal Admin Note (Optional)"
-                  placeholder="Private note for institute audit records..."
-                  value={adminNote}
-                  onChange={(e) => setAdminNote(e.target.value)}
-                />
+                {/* STATUS DECISION ACTION BUTTONS */}
+                <div className="space-y-3 pt-2">
+                  <span className="text-[11px] font-mono uppercase tracking-wider text-thofnaa-charcoal-muted block">
+                    Select Verification Decision:
+                  </span>
 
-                <Button
-                  type="submit"
-                  variant={actionType === "VERIFY" ? "success" : actionType === "CLARIFICATION" ? "secondary" : "danger"}
-                  size="lg"
-                  isLoading={isProcessing}
-                  rightIcon={<Send className="w-4 h-4" />}
-                  className="w-full font-bold shadow-md"
-                >
-                  {actionType === "VERIFY"
-                    ? "Approve & Send Confirmation Email"
-                    : actionType === "CLARIFICATION"
-                    ? "Send Clarification Email"
-                    : "Confirm Rejection & Send Email"}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
+                  <Button
+                    type="button"
+                    variant="success"
+                    size="lg"
+                    isLoading={isUpdating}
+                    disabled={currentStatus === "VERIFIED"}
+                    onClick={() => handleInitiateDecision("VERIFIED")}
+                    leftIcon={<CheckCircle2 className="w-5 h-5" />}
+                    className="w-full font-bold shadow-md text-xs py-3"
+                  >
+                    {currentStatus === "VERIFIED" ? "✓ Already Verified" : "VERIFY PAYMENT & ASSIGN REF"}
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="md"
+                    isLoading={isUpdating}
+                    onClick={() => handleInitiateDecision("NEEDS_CLARIFICATION")}
+                    leftIcon={<AlertTriangle className="w-4 h-4 text-thofnaa-navy" />}
+                    className="w-full font-bold text-xs bg-orange-100 hover:bg-orange-200 text-orange-950 border-orange-300"
+                  >
+                    NEEDS CLARIFICATION
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="danger"
+                    size="md"
+                    isLoading={isUpdating}
+                    onClick={() => handleInitiateDecision("REJECTED")}
+                    leftIcon={<XCircle className="w-4 h-4" />}
+                    className="w-full font-bold text-xs"
+                  >
+                    REJECT PAYMENT
+                  </Button>
+                </div>
+              </CardContent>
+
+              <CardFooter className="bg-gray-50 text-[11px] text-thofnaa-charcoal-muted leading-relaxed">
+                🔒 Every decision records an audit log entry (<code className="font-mono text-[10px]">VERIFY_PAYMENT</code>) with admin user ID and timestamp.
+              </CardFooter>
+            </Card>
+
+            {/* QUICK VERIFICATION CHECKLIST CARD */}
+            <div className="p-5 rounded-2xl bg-white border border-gray-200 shadow-academic-subtle space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-thofnaa-navy flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-thofnaa-gold" />
+                Admin Verification Checklist
+              </h4>
+              <ul className="text-xs text-thofnaa-charcoal-muted space-y-2 leading-relaxed">
+                <li className="flex items-start gap-2">
+                  <span className="text-thofnaa-emerald font-bold">✓</span>
+                  <span>Confirm deposit amount matches tuition fee (LKR 1,000.00).</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-thofnaa-emerald font-bold">✓</span>
+                  <span>Verify People&apos;s Bank account number <strong className="font-mono text-thofnaa-navy">167200230025623</strong>.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-thofnaa-emerald font-bold">✓</span>
+                  <span>Check transaction date matches intended tuition month ({submission.paymentMonth}).</span>
+                </li>
+              </ul>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* CONFIRMATION MODAL */}
+      <Modal
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        title={`Confirm Decision: ${pendingDecision?.replace("_", " ")}`}
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-thofnaa-charcoal leading-relaxed">
+            Are you sure you want to mark payment submission <strong className="font-mono text-thofnaa-navy">{submission.studentRegNo}</strong> ({submission.studentName}) for <strong className="font-semibold">{submission.paymentMonth} {submission.academicYear}</strong> as:
+          </p>
+
+          <div className="p-3 rounded-xl bg-thofnaa-ivory border border-thofnaa-navy/20 font-bold text-center text-sm font-serif">
+            {pendingDecision === "VERIFIED" && <span className="text-thofnaa-emerald">✓ VERIFIED & APPROVED</span>}
+            {pendingDecision === "NEEDS_CLARIFICATION" && <span className="text-orange-700">⚠️ NEEDS CLARIFICATION</span>}
+            {pendingDecision === "REJECTED" && <span className="text-red-700">🛑 REJECTED</span>}
+          </div>
+
+          {adminNote && (
+            <div className="text-xs bg-gray-50 p-3 rounded-xl border border-gray-200">
+              <span className="text-gray-400 block font-mono text-[10px] uppercase">Admin Note:</span>
+              <p className="italic text-thofnaa-navy">{adminNote}</p>
+            </div>
+          )}
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+            <Button variant="outline" size="sm" onClick={() => setIsConfirmModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant={pendingDecision === "VERIFIED" ? "success" : pendingDecision === "REJECTED" ? "danger" : "secondary"}
+              size="sm"
+              onClick={handleExecuteConfirmedDecision}
+              className="font-bold"
+            >
+              Confirm & Execute Update
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

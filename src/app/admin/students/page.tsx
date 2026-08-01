@@ -1,408 +1,343 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { 
   Users, 
-  UserPlus, 
-  Upload, 
   Search, 
-  GraduationCap, 
-  Mail, 
+  Filter, 
+  RotateCcw, 
+  Eye, 
   Phone, 
+  Mail, 
+  GraduationCap, 
+  ChevronLeft, 
+  ChevronRight, 
   CheckCircle2, 
-  FileSpreadsheet, 
-  FileText, 
-  Sparkles,
+  XCircle,
   Plus
 } from "lucide-react";
-import { THOFNAA_CONFIG } from "@/lib/constants";
-import { INITIAL_STUDENTS, Student } from "@/lib/mockData";
+import { AdminSidebar } from "@/components/layout/AdminSidebar";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { FormError } from "@/components/ui/FormError";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/Table";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { formatLKR } from "@/lib/utils";
+import { INITIAL_STUDENTS } from "@/lib/mockData";
+import { THOFNAA_CONFIG } from "@/lib/constants";
 
 export default function AdminStudentsPage() {
-  const [students, setStudents] = useState<Student[]>(INITIAL_STUDENTS);
+  // Filter States
   const [searchQuery, setSearchQuery] = useState("");
-  const [gradeFilter, setGradeFilter] = useState("ALL");
+  const [selectedGrade, setSelectedGrade] = useState("All");
+  const [selectedBatch, setSelectedBatch] = useState("All");
+  const [selectedStatus, setSelectedStatus] = useState("All");
 
-  // Add/Import Modal State
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [addMode, setAddMode] = useState<"SINGLE" | "CSV">("SINGLE");
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
 
-  // Single Student Form
-  const [newRegNo, setNewRegNo] = useState(`THF-26-000${students.length + 1}`);
-  const [newFullName, setNewFullName] = useState("");
-  const [newGradeLevel, setNewGradeLevel] = useState("Grade 11 (O/L)");
-  const [newGuardianName, setNewGuardianName] = useState("");
-  const [newGuardianEmail, setNewGuardianEmail] = useState("");
-  const [newGuardianPhone, setNewGuardianPhone] = useState("");
-  const [newWhatsapp, setNewWhatsapp] = useState("");
-
-  // CSV Import state
-  const [csvText, setCsvText] = useState("");
-  const [formError, setFormError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
-  const filteredStudents = students.filter((std) => {
-    const matchesGrade = gradeFilter === "ALL" || std.gradeLevel === gradeFilter;
-    const matchesSearch =
-      std.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      std.studentRegNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      std.guardianEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      std.guardianName.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesGrade && matchesSearch;
-  });
-
-  const handleAddSingleStudent = (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError(null);
-
-    if (!newRegNo || !newFullName || !newGuardianEmail) {
-      setFormError("Please fill in Registration No, Full Name, and Guardian Email.");
-      return;
-    }
-
-    // Check duplicate reg no
-    if (students.some((s) => s.studentRegNo.toUpperCase() === newRegNo.toUpperCase())) {
-      setFormError(`Student Reg No "${newRegNo}" already exists in roster!`);
-      return;
-    }
-
-    const newStudent: Student = {
-      id: `std-00${students.length + 1}`,
-      studentRegNo: newRegNo.toUpperCase(),
-      fullName: newFullName,
-      gradeLevel: newGradeLevel,
-      batch: newGradeLevel.includes("6") || newGradeLevel.includes("7") ? "Foundation Sinhala" : newGradeLevel.includes("8") || newGradeLevel.includes("9") ? "Intermediate Sinhala" : "Senior / O/L Sinhala",
-      programme: "Second Language Sinhala",
-      guardianName: newGuardianName,
-      guardianEmail: newGuardianEmail,
-      guardianPhone: newGuardianPhone || "+94 77 000 0000",
-      whatsappNumber: newWhatsapp || newGuardianPhone || "+94 77 000 0000",
-      createdAt: new Date().toISOString().split("T")[0],
-    };
-
-    setStudents([newStudent, ...students]);
-    setSuccessMessage(`Added student ${newStudent.fullName} (${newStudent.studentRegNo}) to roster!`);
-    setIsAddModalOpen(false);
-
-    // Reset form
-    setNewFullName("");
-    setNewGuardianName("");
-    setNewGuardianEmail("");
-    setNewGuardianPhone("");
-    setNewRegNo(`THF-26-000${students.length + 2}`);
-  };
-
-  const handleImportCsv = (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError(null);
-
-    if (!csvText.trim()) {
-      setFormError("Please paste CSV content with student details.");
-      return;
-    }
-
-    try {
-      const lines = csvText.trim().split("\n");
-      const importedList: Student[] = [];
-
-      lines.forEach((line, index) => {
-        // Skip header line if present
-        if (index === 0 && line.toLowerCase().includes("reg")) return;
-
-        const parts = line.split(",").map((p) => p.trim());
-        if (parts.length >= 3) {
-          const [regNo, name, grade, parentName, email, phone] = parts;
-          importedList.push({
-            id: `std-csv-${index}-${Date.now()}`,
-            studentRegNo: regNo || `THF-26-000${students.length + index + 1}`,
-            fullName: name || "Student " + (index + 1),
-            gradeLevel: grade || "Grade 11",
-            batch: (grade || "").includes("6") || (grade || "").includes("7") ? "Foundation Sinhala" : (grade || "").includes("8") || (grade || "").includes("9") ? "Intermediate Sinhala" : "Senior / O/L Sinhala",
-            programme: "Second Language Sinhala",
-            guardianName: parentName || "Parent",
-            guardianEmail: email || "parent@example.com",
-            guardianPhone: phone || "+94 77 123 4567",
-            whatsappNumber: phone || "+94 77 123 4567",
-            createdAt: new Date().toISOString().split("T")[0],
-          });
-        }
-      });
-
-      if (importedList.length === 0) {
-        setFormError("Could not parse valid student rows from CSV.");
-        return;
+  // Filter Roster Dataset
+  const filteredStudents = useMemo(() => {
+    return INITIAL_STUDENTS.filter((student) => {
+      // 1. Search Query Filter (Reg No or Name)
+      if (searchQuery.trim()) {
+        const query = searchQuery.trim().toLowerCase();
+        const matchesRegNo = student.studentRegNo.toLowerCase().includes(query);
+        const matchesName = student.fullName.toLowerCase().includes(query);
+        const matchesParent = student.guardianName.toLowerCase().includes(query);
+        if (!matchesRegNo && !matchesName && !matchesParent) return false;
       }
 
-      setStudents([...importedList, ...students]);
-      setSuccessMessage(`Successfully bulk imported ${importedList.length} student(s) into roster!`);
-      setIsAddModalOpen(false);
-      setCsvText("");
-    } catch {
-      setFormError("Error parsing CSV format. Ensure comma-separated values.");
-    }
+      // 2. Grade Filter
+      if (selectedGrade !== "All" && student.gradeLevel.toLowerCase() !== selectedGrade.toLowerCase()) {
+        return false;
+      }
+
+      // 3. Batch Filter
+      if (selectedBatch !== "All" && !student.batch?.toLowerCase().includes(selectedBatch.toLowerCase())) {
+        return false;
+      }
+
+      // 4. Active/Inactive Status Filter
+      if (selectedStatus === "Active") return true; // Mock students are all active
+      if (selectedStatus === "Inactive") return false;
+
+      return true;
+    });
+  }, [searchQuery, selectedGrade, selectedBatch, selectedStatus]);
+
+  // Paginated Roster
+  const totalPages = Math.ceil(filteredStudents.length / itemsPerPage) || 1;
+  const paginatedStudents = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredStudents.slice(start, start + itemsPerPage);
+  }, [filteredStudents, currentPage, itemsPerPage]);
+
+  const handleResetFilters = () => {
+    setSearchQuery("");
+    setSelectedGrade("All");
+    setSelectedBatch("All");
+    setSelectedStatus("All");
+    setCurrentPage(1);
   };
 
   return (
-    <div className="space-y-8">
-      <PageHeader
-        title="Student Roster & Administration"
-        subtitle="Manage enrolled THOFNAA students, assign registration numbers, and bulk import class rosters."
-        badgeText="Roster Management"
-        action={
-          <Button
-            variant="secondary"
-            size="md"
-            leftIcon={<UserPlus className="w-4 h-4" />}
-            onClick={() => setIsAddModalOpen(true)}
-            className="font-bold shadow-gold"
-          >
-            Add / Bulk Import Students
-          </Button>
-        }
-      />
+    <div className="flex flex-col md:flex-row gap-8 max-w-7xl mx-auto">
+      {/* Admin Sidebar */}
+      <AdminSidebar />
 
-      {successMessage && (
-        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 flex items-center justify-between text-xs animate-in fade-in duration-300">
-          <div className="flex items-center gap-2 font-semibold">
-            <CheckCircle2 className="w-5 h-5 text-thofnaa-emerald shrink-0" />
-            <span>{successMessage}</span>
-          </div>
-          <button onClick={() => setSuccessMessage(null)} className="text-thofnaa-emerald font-bold underline">
-            Dismiss
-          </button>
-        </div>
-      )}
+      {/* Main Content Area */}
+      <div className="flex-1 space-y-8 min-w-0">
+        <PageHeader
+          title="Student Roster & Profiles"
+          subtitle="Manage student registrations, grade allocations, parent contact details, and tuition fees."
+          badgeText="Student Directory"
+          action={
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono font-bold bg-thofnaa-navy text-white px-3 py-1.5 rounded-xl border border-thofnaa-gold/30">
+                Total Enrolled: {INITIAL_STUDENTS.length}
+              </span>
+            </div>
+          }
+        />
 
-      {/* Roster Search & Filter Card */}
-      <Card goldHeaderBorder className="shadow-md">
-        <CardHeader className="bg-white">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        {/* SEARCH & FILTERS BAR CARD */}
+        <Card goldHeaderBorder className="shadow-md">
+          <CardHeader className="bg-white border-b border-gray-100 pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Filter className="w-4 h-4 text-thofnaa-navy" /> Search & Filter Roster
+                </CardTitle>
+                <CardDescription>
+                  Filter enrolled students by registration number, name, grade level, batch, or active status.
+                </CardDescription>
+              </div>
+
+              {(searchQuery || selectedGrade !== "All" || selectedBatch !== "All" || selectedStatus !== "All") && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleResetFilters}
+                  leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
+                  className="text-xs text-thofnaa-navy hover:bg-gray-100 self-start sm:self-auto"
+                >
+                  Reset Filters
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+
+          <CardContent className="pt-4 space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+              {/* Search Bar */}
+              <div className="lg:col-span-5">
+                <Input
+                  label="Search Student / Reg No / Parent"
+                  placeholder="e.g. THF-26-0001 or Kasun"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  leftIcon={<Search className="w-4 h-4" />}
+                />
+              </div>
+
+              {/* Filters */}
+              <div className="lg:col-span-7 grid grid-cols-3 gap-3">
+                <Select
+                  label="Grade Level"
+                  value={selectedGrade}
+                  onChange={(e) => {
+                    setSelectedGrade(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  options={["All", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11"]}
+                />
+
+                <Select
+                  label="Batch Module"
+                  value={selectedBatch}
+                  onChange={(e) => {
+                    setSelectedBatch(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  options={["All", "Foundation", "Intermediate", "Senior"]}
+                />
+
+                <Select
+                  label="Status"
+                  value={selectedStatus}
+                  onChange={(e) => {
+                    setSelectedStatus(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  options={["All", "Active", "Inactive"]}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* STUDENT ROSTER TABLE CARD */}
+        <Card goldHeaderBorder className="shadow-md">
+          <CardHeader className="bg-thofnaa-navy text-white flex flex-row items-center justify-between py-4">
             <div>
-              <CardTitle className="text-lg">Registered Student Roster</CardTitle>
-              <CardDescription>
-                Showing {filteredStudents.length} of {students.length} active students.
+              <CardTitle className="text-white text-base">Enrolled Students List</CardTitle>
+              <CardDescription className="text-thofnaa-gold text-xs">
+                Showing {filteredStudents.length} student profiles
               </CardDescription>
             </div>
+          </CardHeader>
 
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Input
-                placeholder="Search name, reg no, or email..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                leftIcon={<Search className="w-4 h-4" />}
-                className="w-full sm:w-64"
-              />
-              <Select
-                value={gradeFilter}
-                onChange={(e) => setGradeFilter(e.target.value)}
-                options={["ALL", ...THOFNAA_CONFIG.grades]}
-              />
-            </div>
-          </div>
-        </CardHeader>
-
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="bg-thofnaa-navy-50 text-thofnaa-navy uppercase font-mono text-[10px] tracking-wider border-b border-gray-200">
-                  <th className="py-3.5 px-4">Reg Number</th>
-                  <th className="py-3.5 px-4">Student Name</th>
-                  <th className="py-3.5 px-4">Grade Level</th>
-                  <th className="py-3.5 px-4">Guardian Details</th>
-                  <th className="py-3.5 px-4">WhatsApp / Contact</th>
-                  <th className="py-3.5 px-4">Joined Date</th>
-                  <th className="py-3.5 px-4 text-right">Profile</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {filteredStudents.map((std) => (
-                  <tr key={std.id} className="hover:bg-gray-50/80 transition-colors">
-                    <td className="py-4 px-4 font-mono font-extrabold text-thofnaa-navy">
-                      {std.studentRegNo}
-                    </td>
-                    <td className="py-4 px-4 font-serif font-bold text-thofnaa-charcoal text-sm">
-                      {std.fullName}
-                    </td>
-                    <td className="py-4 px-4 font-medium">
-                      <span className="px-2.5 py-0.5 rounded-full bg-thofnaa-navy-50 text-thofnaa-navy border border-thofnaa-navy/20 text-[11px]">
-                        {std.gradeLevel}
-                      </span>
-                    </td>
-                    <td className="py-4 px-4">
-                      <p className="font-semibold text-thofnaa-charcoal">{std.guardianName}</p>
-                      <span className="text-[10px] font-mono text-gray-500">{std.guardianEmail}</span>
-                    </td>
-                    <td className="py-4 px-4 font-mono text-gray-600">
-                      {std.whatsappNumber}
-                    </td>
-                    <td className="py-4 px-4 text-gray-500 font-mono">
-                      {std.createdAt}
-                    </td>
-                    <td className="py-4 px-4 text-right">
-                      <Link href={`/admin/students/${std.id}`}>
-                        <Button variant="outline" size="sm" className="px-3 py-1 text-[11px]">
-                          View Profile & Payments
-                        </Button>
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Add / Import Student Modal */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-thofnaa-navy/60 backdrop-blur-xs animate-in fade-in">
-          <Card goldHeaderBorder className="w-full max-w-xl bg-white shadow-2xl space-y-4">
-            <CardHeader className="bg-thofnaa-navy text-white flex flex-row items-center justify-between py-4">
-              <div className="flex items-center gap-2">
-                <UserPlus className="w-5 h-5 text-thofnaa-gold" />
-                <CardTitle className="text-white text-base">Add or Import Students</CardTitle>
+          <CardContent className="p-0">
+            {paginatedStudents.length === 0 ? (
+              <div className="py-12">
+                <EmptyState
+                  title="No students match your criteria"
+                  description="Try clearing your search query or grade/batch filters."
+                  action={
+                    <Button variant="outline" size="sm" onClick={handleResetFilters}>
+                      Clear All Filters
+                    </Button>
+                  }
+                />
               </div>
-              <button
-                onClick={() => setIsAddModalOpen(false)}
-                className="text-thofnaa-gold hover:text-white text-sm font-bold"
-              >
-                ✕ Close
-              </button>
-            </CardHeader>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Registration No</TableHead>
+                      <TableHead>Student Name</TableHead>
+                      <TableHead>Grade</TableHead>
+                      <TableHead>Batch</TableHead>
+                      <TableHead>Programme</TableHead>
+                      <TableHead>Parent Name</TableHead>
+                      <TableHead>WhatsApp</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Fee (LKR)</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedStudents.map((st) => (
+                      <TableRow key={st.id} className="hover:bg-thofnaa-ivory/50 transition-colors">
+                        <TableCell className="font-mono font-bold text-thofnaa-navy text-xs">
+                          {st.studentRegNo}
+                        </TableCell>
 
-            <CardContent className="space-y-6">
-              {/* Tab selector between Single vs CSV */}
-              <div className="flex rounded-lg bg-gray-100 p-1">
-                <button
-                  type="button"
-                  onClick={() => setAddMode("SINGLE")}
-                  className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${
-                    addMode === "SINGLE" ? "bg-white text-thofnaa-navy shadow-xs" : "text-gray-600"
-                  }`}
-                >
-                  Add Single Student
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAddMode("CSV")}
-                  className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${
-                    addMode === "CSV" ? "bg-white text-thofnaa-navy shadow-xs" : "text-gray-600"
-                  }`}
-                >
-                  Bulk CSV Import
-                </button>
+                        <TableCell className="font-serif font-semibold text-thofnaa-navy text-xs">
+                          {st.fullName}
+                        </TableCell>
+
+                        <TableCell className="text-xs font-medium">
+                          {st.gradeLevel}
+                        </TableCell>
+
+                        <TableCell className="text-xs text-thofnaa-charcoal">
+                          {st.batch}
+                        </TableCell>
+
+                        <TableCell className="text-[11px] text-thofnaa-charcoal-muted truncate max-w-[140px]">
+                          {st.programme}
+                        </TableCell>
+
+                        <TableCell className="text-xs text-thofnaa-charcoal">
+                          {st.guardianName}
+                        </TableCell>
+
+                        <TableCell className="text-xs">
+                          <a
+                            href={`https://wa.me/${st.whatsappNumber.replace(/[^0-9]/g, "")}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="font-mono text-emerald-800 hover:underline flex items-center gap-1 font-semibold"
+                          >
+                            <Phone className="w-3 h-3 text-thofnaa-emerald" />
+                            {st.whatsappNumber}
+                          </a>
+                        </TableCell>
+
+                        <TableCell className="text-xs font-mono text-thofnaa-charcoal-muted truncate max-w-[150px]">
+                          {st.guardianEmail}
+                        </TableCell>
+
+                        <TableCell className="font-mono text-xs font-bold text-thofnaa-emerald">
+                          {formatLKR(1000)}
+                        </TableCell>
+
+                        <TableCell>
+                          <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full font-mono">
+                            <CheckCircle2 className="w-3 h-3 text-thofnaa-emerald" /> ACTIVE
+                          </span>
+                        </TableCell>
+
+                        <TableCell className="text-right">
+                          <Link href={`/admin/students/${st.id}`}>
+                            <Button variant="outline" size="sm" leftIcon={<Eye className="w-3.5 h-3.5 text-thofnaa-navy" />}>
+                              View
+                            </Button>
+                          </Link>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+
+          {/* PAGINATION FOOTER */}
+          {filteredStudents.length > 0 && (
+            <div className="p-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-thofnaa-charcoal-muted">
+              <div>
+                Showing <strong className="text-thofnaa-navy font-mono">{(currentPage - 1) * itemsPerPage + 1}</strong> to{" "}
+                <strong className="text-thofnaa-navy font-mono">
+                  {Math.min(currentPage * itemsPerPage, filteredStudents.length)}
+                </strong>{" "}
+                of <strong className="text-thofnaa-navy font-mono">{filteredStudents.length}</strong> total students
               </div>
 
-              <FormError message={formError} />
+              {totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    leftIcon={<ChevronLeft className="w-3.5 h-3.5" />}
+                    className="bg-white text-xs"
+                  >
+                    Prev
+                  </Button>
 
-              {addMode === "SINGLE" ? (
-                <form onSubmit={handleAddSingleStudent} className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Input
-                      label="Student Reg Number"
-                      value={newRegNo}
-                      onChange={(e) => setNewRegNo(e.target.value.toUpperCase())}
-                      placeholder="THF-26-0004"
-                      required
-                    />
+                  <span className="font-mono text-xs px-2 text-thofnaa-navy font-semibold">
+                    Page {currentPage} of {totalPages}
+                  </span>
 
-                    <Select
-                      label="Grade Level"
-                      value={newGradeLevel}
-                      onChange={(e) => setNewGradeLevel(e.target.value)}
-                      options={THOFNAA_CONFIG.grades}
-                      required
-                    />
-                  </div>
-
-                  <Input
-                    label="Full Student Name"
-                    value={newFullName}
-                    onChange={(e) => setNewFullName(e.target.value)}
-                    placeholder="e.g. Ruwan Wickremasinghe"
-                    required
-                  />
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Input
-                      label="Guardian Name"
-                      value={newGuardianName}
-                      onChange={(e) => setNewGuardianName(e.target.value)}
-                      placeholder="Parent Name"
-                      required
-                    />
-
-                    <Input
-                      label="Guardian Email (For Receipts)"
-                      type="email"
-                      value={newGuardianEmail}
-                      onChange={(e) => setNewGuardianEmail(e.target.value)}
-                      placeholder="parent@gmail.com"
-                      required
-                    />
-                  </div>
-
-                  <Input
-                    label="WhatsApp / Mobile Number"
-                    value={newGuardianPhone}
-                    onChange={(e) => setNewGuardianPhone(e.target.value)}
-                    placeholder="+94 77 123 4567"
-                    required
-                  />
-
-                  <div className="pt-2 flex justify-end gap-2">
-                    <Button variant="outline" size="md" onClick={() => setIsAddModalOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button type="submit" variant="success" size="md" className="font-bold">
-                      Save Student to Roster
-                    </Button>
-                  </div>
-                </form>
-              ) : (
-                <form onSubmit={handleImportCsv} className="space-y-4">
-                  <div className="p-3 rounded-lg bg-thofnaa-navy-50 border border-thofnaa-navy-100 text-xs space-y-1 text-thofnaa-navy">
-                    <p className="font-bold">CSV Format Template:</p>
-                    <p className="font-mono text-[11px]">
-                      regNo, fullName, gradeLevel, guardianName, guardianEmail, phone
-                    </p>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-thofnaa-charcoal">
-                      Paste CSV Content Below
-                    </label>
-                    <textarea
-                      rows={6}
-                      value={csvText}
-                      onChange={(e) => setCsvText(e.target.value)}
-                      placeholder={`THF-26-0004, Nuwan Pradeep, Grade 11 (O/L), Sarath Pradeep, sarath@gmail.com, +94 77 444 5555\nTHF-26-0005, Anuki Fernando, Grade 10, Nimali Fernando, nimali@yahoo.com, +94 71 888 9999`}
-                      className="w-full rounded-lg border border-gray-300 p-3 font-mono text-xs focus:border-thofnaa-navy focus:outline-none"
-                    />
-                  </div>
-
-                  <div className="pt-2 flex justify-end gap-2">
-                    <Button variant="outline" size="md" onClick={() => setIsAddModalOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button type="submit" variant="primary" size="md" className="font-bold">
-                      Import CSV Roster
-                    </Button>
-                  </div>
-                </form>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                    rightIcon={<ChevronRight className="w-3.5 h-3.5" />}
+                    className="bg-white text-xs"
+                  >
+                    Next
+                  </Button>
+                </div>
               )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
+            </div>
+          )}
+        </Card>
+      </div>
     </div>
   );
 }

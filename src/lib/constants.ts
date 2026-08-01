@@ -1,3 +1,5 @@
+import { programmeRegistry, getBatchForGrade, getSchedulesForGrade } from "@/lib/programmes";
+
 export const THOFNAA_CONFIG = {
   name: "THOFNAA INSTITUTE",
   tagline: "Learn • Achieve • Succeed",
@@ -27,8 +29,9 @@ export const THOFNAA_CONFIG = {
     "July", "August", "September", "October", "November", "December"
   ],
   grades: [
-    "Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5",
-    "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10",
-    "Grade 11 (O/L)", "A/L Sinhala", "General Spoken Sinhala"
-  ]
+    "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11"
+  ],
+  programmeRegistry,
+  getBatchForGrade,
+  getSchedulesForGrade,
 };

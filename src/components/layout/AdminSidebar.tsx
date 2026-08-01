@@ -11,10 +11,12 @@ import {
   GraduationCap, 
   LogOut, 
   ChevronRight,
-  ShieldCheck
+  ShieldCheck,
+  History
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { THOFNAA_CONFIG } from "@/lib/constants";
+import { adminLogoutAction } from "@/app/actions/adminAuthActions";
 
 export function AdminSidebar() {
   const pathname = usePathname();
@@ -34,6 +36,11 @@ export function AdminSidebar() {
       label: "Student Roster & Import",
       href: "/admin/students",
       icon: <Users className="w-4 h-4" />,
+    },
+    {
+      label: "System Audit Trail",
+      href: "/admin/audit",
+      icon: <History className="w-4 h-4" />,
     },
     {
       label: "UI Design System",
@@ -107,15 +114,15 @@ export function AdminSidebar() {
           </div>
         </div>
 
-        <Link href="/admin/login" className="block">
+        <form action={adminLogoutAction}>
           <button
-            type="button"
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs text-thofnaa-gold border border-thofnaa-gold/30 hover:bg-thofnaa-gold hover:text-thofnaa-navy transition-all"
+            type="submit"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs text-thofnaa-gold border border-thofnaa-gold/30 hover:bg-thofnaa-gold hover:text-thofnaa-navy transition-all font-semibold"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>Sign Out</span>
           </button>
-        </Link>
+        </form>
       </div>
     </aside>
   );

@@ -6,11 +6,12 @@ export type PaymentStatus = "PENDING" | "VERIFIED" | "REJECTED" | "CLARIFICATION
 
 export interface StatusBadgeProps {
   status: PaymentStatus | string;
+  label?: string;
   size?: "sm" | "md" | "lg";
   className?: string;
 }
 
-export function StatusBadge({ status, size = "md", className }: StatusBadgeProps) {
+export function StatusBadge({ status, label, size = "md", className }: StatusBadgeProps) {
   const normalizedStatus = (status || "PENDING").toUpperCase();
 
   const configs: Record<string, { label: string; bg: string; text: string; border: string; icon: React.ReactNode }> = {
@@ -64,7 +65,7 @@ export function StatusBadge({ status, size = "md", className }: StatusBadgeProps
       )}
     >
       {config.icon}
-      <span>{config.label}</span>
+      <span>{label || config.label}</span>
     </span>
   );
 }

@@ -2,166 +2,282 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Search, SearchCheck, Clock, CheckCircle2, AlertCircle, FileText, ArrowRight, ShieldCheck } from "lucide-react";
-import { INITIAL_SUBMISSIONS, PaymentSubmission } from "@/lib/mockData";
+import { 
+  Search, 
+  ShieldCheck, 
+  Lock, 
+  Mail, 
+  Calendar, 
+  CheckCircle2, 
+  Clock, 
+  AlertTriangle, 
+  XCircle, 
+  Copy, 
+  Check, 
+  ArrowRight, 
+  PlusCircle,
+  GraduationCap
+} from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormError } from "@/components/ui/FormError";
+import { StatusBadge, PaymentStatus } from "@/components/ui/StatusBadge";
+import { formatLKR } from "@/lib/utils";
+import { lookupPaymentStatusAction, PaymentHistoryItem } from "@/app/actions/paymentStatusLookupAction";
 
 export default function PaymentStatusPage() {
-  const [searchInput, setSearchInput] = useState("");
-  const [isSearching, setIsSearching] = useState(false);
-  const [results, setResults] = useState<PaymentSubmission[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [studentRegNo, setStudentRegNo] = useState("");
+  const [parentEmail, setParentEmail] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const [studentInfo, setStudentInfo] = useState<{
+    registrationNo: string;
+    nameWithInitials: string;
+    grade: string;
+    programme: string;
+  } | null>(null);
+
+  const [history, setHistory] = useState<PaymentHistoryItem[] | null>(null);
+  const [copiedRef, setCopiedRef] = useState<string | null>(null);
+
+  const handleLookup = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setResults(null);
+    setErrorMessage(null);
 
-    const query = searchInput.trim().toUpperCase();
-    if (!query) {
-      setError("Please enter a Payment Reference Code (e.g., THF-PAY-26-0001) or Student Reg Number.");
+    if (!studentRegNo.trim() || !parentEmail.trim()) {
+      setErrorMessage("Please enter both Registration Number and Parent Email.");
       return;
     }
 
-    setIsSearching(true);
+    setIsLoading(true);
+    const result = await lookupPaymentStatusAction({
+      studentRegNo,
+      parentEmail,
+    });
+    setIsLoading(false);
 
-    setTimeout(() => {
-      setIsSearching(false);
-      const matches = INITIAL_SUBMISSIONS.filter(
-        (sub) =>
-          sub.paymentRef.toUpperCase() === query ||
-          sub.studentRegNo.toUpperCase() === query
-      );
+    if (result.success && result.studentInfo && result.history) {
+      setStudentInfo(result.studentInfo);
+      setHistory(result.history);
+    } else {
+      setErrorMessage(result.error || "No matching student record found.");
+      setStudentInfo(null);
+      setHistory(null);
+    }
+  };
 
-      if (matches.length > 0) {
-        setResults(matches);
-      } else {
-        setError(`No payment records found matching "${query}". Please check your receipt code or contact administration on WhatsApp.`);
-      }
-    }, 500);
+  const handleCopyReference = (ref: string) => {
+    navigator.clipboard.writeText(ref);
+    setCopiedRef(ref);
+    setTimeout(() => setCopiedRef(null), 2000);
   };
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-300">
       <PageHeader
-        title="Check Payment Verification Status"
-        subtitle="Track live administrative status of your tuition fee submission."
-        badgeText="Public Lookup"
+        title="Check Payment Status & History"
+        subtitle="Dual-factor secure lookup for THOFNAA INSTITUTE Sinhala tuition payment verification records."
+        badgeText="Parent Portal"
       />
 
-      <Card goldHeaderBorder className="shadow-md">
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Search className="w-5 h-5 text-thofnaa-navy" />
-            Track Payment Reference or Student Reg No
+      {/* 2-FACTOR SECURE LOOKUP FORM */}
+      <Card goldHeaderBorder className="shadow-lg">
+        <CardHeader className="bg-thofnaa-navy text-white py-6">
+          <CardTitle className="text-white text-base flex items-center gap-2">
+            <Lock className="w-4 h-4 text-thofnaa-gold" /> Secure Payment History Lookup
           </CardTitle>
-          <CardDescription>
-            Enter your generated reference (e.g. THF-PAY-26-0001) or Student Reg No (e.g. THF-26-0001).
+          <CardDescription className="text-thofnaa-gold text-xs">
+            Enter Student Registration Number and Parent Email to verify payment status.
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="space-y-6">
-          <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1">
+        <CardContent className="pt-6">
+          <form onSubmit={handleLookup} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
-                placeholder="e.g. THF-PAY-26-0001 or THF-26-0001"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                leftIcon={<SearchCheck className="w-4 h-4" />}
+                label="Student Registration Number *"
+                placeholder="e.g. THF-26-0001"
+                value={studentRegNo}
+                onChange={(e) => setStudentRegNo(e.target.value.toUpperCase())}
+                leftIcon={<Search className="w-4 h-4" />}
+                required
+              />
+
+              <Input
+                label="Parent Email Address *"
+                type="email"
+                placeholder="e.g. parent@example.com"
+                value={parentEmail}
+                onChange={(e) => setParentEmail(e.target.value)}
+                leftIcon={<Mail className="w-4 h-4" />}
                 required
               />
             </div>
-            <Button
-              type="submit"
-              variant="primary"
-              size="md"
-              isLoading={isSearching}
-              leftIcon={<Search className="w-4 h-4" />}
-              className="px-6 font-bold"
-            >
-              Check Status
-            </Button>
-          </form>
 
-          <FormError message={error} />
+            <FormError message={errorMessage} />
 
-          {/* Search Results Display */}
-          {results && results.length > 0 && (
-            <div className="space-y-6 pt-4 border-t border-gray-100 animate-in fade-in duration-300">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-thofnaa-navy flex items-center gap-2">
-                <FileText className="w-4 h-4 text-thofnaa-gold" />
-                Found {results.length} Payment Submission(s)
-              </h4>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
+              <span className="text-[11px] text-thofnaa-charcoal-muted flex items-center gap-1">
+                🔒 Requires both Registration No & Parent Email for student privacy.
+              </span>
 
-              {results.map((sub) => (
-                <div
-                  key={sub.id}
-                  className="p-6 rounded-xl border border-gray-200 bg-white shadow-xs space-y-4 hover:border-thofnaa-navy/30 transition-colors"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
-                    <div>
-                      <span className="text-[10px] font-bold font-mono text-thofnaa-charcoal-muted uppercase block">
-                        Payment Reference
-                      </span>
-                      <span className="text-lg font-mono font-extrabold text-thofnaa-navy tracking-tight">
-                        {sub.paymentRef}
-                      </span>
-                    </div>
-
-                    <StatusBadge status={sub.status} size="lg" />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-                    <div>
-                      <span className="text-thofnaa-charcoal-muted block">Student Name</span>
-                      <strong className="text-thofnaa-navy text-sm font-serif">{sub.studentName}</strong>
-                      <p className="text-[11px] font-mono text-gray-500">{sub.studentRegNo}</p>
-                    </div>
-
-                    <div>
-                      <span className="text-thofnaa-charcoal-muted block">Month & Fee</span>
-                      <strong className="text-thofnaa-navy">{sub.paymentMonth} {sub.academicYear}</strong>
-                      <p className="text-[11px] font-mono font-bold text-thofnaa-emerald">
-                        LKR {sub.feeAmount.toLocaleString()}.00
-                      </p>
-                    </div>
-
-                    <div>
-                      <span className="text-thofnaa-charcoal-muted block">Deposit Date</span>
-                      <strong className="text-thofnaa-navy">{sub.transactionDate}</strong>
-                      <p className="text-[11px] font-mono text-gray-500">Ref: {sub.depositReferenceNo}</p>
-                    </div>
-                  </div>
-
-                  {/* Clarification or Rejection Note alert if applicable */}
-                  {sub.rejectionReason && (
-                    <div className="p-3.5 rounded-lg bg-orange-50 border border-orange-200 text-xs space-y-1">
-                      <div className="flex items-center gap-1.5 text-orange-900 font-bold">
-                        <AlertCircle className="w-4 h-4 text-orange-600" />
-                        <span>Administrative Feedback:</span>
-                      </div>
-                      <p className="text-orange-800 leading-relaxed text-[11px]">
-                        {sub.rejectionReason}
-                      </p>
-                    </div>
-                  )}
-
-                  {sub.adminNotes && sub.status === "VERIFIED" && (
-                    <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-800">
-                      <span className="font-bold">Admin Note:</span> {sub.adminNotes}
-                    </div>
-                  )}
-                </div>
-              ))}
+              <Button
+                type="submit"
+                variant="primary"
+                size="md"
+                isLoading={isLoading}
+                rightIcon={<ArrowRight className="w-4 h-4" />}
+                className="w-full sm:w-auto font-bold shadow-md"
+              >
+                Lookup Payment History
+              </Button>
             </div>
-          )}
+          </form>
         </CardContent>
       </Card>
+
+      {/* RESULTS DISPLAY PANEL */}
+      {studentInfo && history && (
+        <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-300">
+          
+          {/* STUDENT SUMMARY CARD */}
+          <Card goldHeaderBorder className="shadow-md bg-thofnaa-ivory border border-thofnaa-gold/40">
+            <CardContent className="p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-thofnaa-gold/20 pb-4 mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-thofnaa-navy text-thofnaa-gold flex items-center justify-center font-serif font-bold text-lg shadow-md shrink-0">
+                    {studentInfo.nameWithInitials.charAt(0)}
+                  </div>
+                  <div>
+                    <h3 className="font-serif font-bold text-thofnaa-navy text-lg">
+                      {studentInfo.nameWithInitials}
+                    </h3>
+                    <p className="text-xs text-thofnaa-charcoal-muted font-mono">
+                      Registration No: <strong className="text-thofnaa-navy">{studentInfo.registrationNo}</strong>
+                    </p>
+                  </div>
+                </div>
+
+                <Link href="/payment">
+                  <Button variant="success" size="sm" leftIcon={<PlusCircle className="w-4 h-4" />}>
+                    Submit New Payment
+                  </Button>
+                </Link>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs">
+                <div>
+                  <span className="text-thofnaa-charcoal-muted block font-mono text-[10px] uppercase">Grade Level</span>
+                  <strong className="text-thofnaa-navy font-semibold">{studentInfo.grade}</strong>
+                </div>
+                <div>
+                  <span className="text-thofnaa-charcoal-muted block font-mono text-[10px] uppercase">Programme</span>
+                  <strong className="text-thofnaa-navy font-semibold">{studentInfo.programme}</strong>
+                </div>
+                <div>
+                  <span className="text-thofnaa-charcoal-muted block font-mono text-[10px] uppercase">Monthly Tuition Fee</span>
+                  <strong className="text-thofnaa-emerald font-mono font-bold">LKR 1,000.00</strong>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 12-MONTH TUITION PAYMENT HISTORY ROSTER */}
+          <Card goldHeaderBorder className="shadow-lg">
+            <CardHeader className="bg-thofnaa-navy text-white flex flex-row items-center justify-between py-4">
+              <div>
+                <CardTitle className="text-white text-base flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-thofnaa-gold" /> 2026 Academic Payment History
+                </CardTitle>
+                <CardDescription className="text-thofnaa-gold text-xs">
+                  Official verification record for THOFNAA tuition receipts.
+                </CardDescription>
+              </div>
+            </CardHeader>
+
+            <CardContent className="p-0 divide-y divide-gray-100">
+              {history.map((item, idx) => {
+                const isVerified = item.status === "VERIFIED";
+                const isPending = item.status === "PENDING";
+                const isClarification = item.status === "CLARIFICATION_NEEDED";
+                const isRejected = item.status === "REJECTED";
+                const isNotSubmitted = item.status === "NOT_SUBMITTED";
+
+                return (
+                  <div
+                    key={idx}
+                    className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-gray-50/80 transition-colors"
+                  >
+                    {/* Left: Month & Amount */}
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-serif font-bold text-thofnaa-navy text-sm">
+                          {item.monthYear}
+                        </span>
+                        {item.submittedDate && (
+                          <span className="text-[10px] text-thofnaa-charcoal-muted font-mono bg-gray-100 px-2 py-0.5 rounded-full">
+                            Submitted: {item.submittedDate}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs font-mono text-thofnaa-emerald font-semibold block">
+                        Tuition Fee: {formatLKR(item.amountLKR)}
+                      </span>
+                    </div>
+
+                    {/* Center/Right: Status Badge & Reference */}
+                    <div className="flex flex-wrap items-center gap-3">
+                      {isNotSubmitted ? (
+                        <span className="text-xs font-medium text-gray-400 italic bg-gray-100 px-3 py-1 rounded-full">
+                          No payment submitted
+                        </span>
+                      ) : (
+                        <StatusBadge status={item.status as PaymentStatus} size="sm" />
+                      )}
+
+                      {/* Payment Reference Display with Copy Action */}
+                      {item.paymentReference && (
+                        <div className="flex items-center gap-1.5 bg-thofnaa-ivory border border-thofnaa-gold/40 px-3 py-1 rounded-xl text-xs">
+                          <span className="font-mono text-[10px] text-thofnaa-charcoal-muted uppercase">Ref:</span>
+                          <strong className="font-mono text-thofnaa-navy text-xs">{item.paymentReference}</strong>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyReference(item.paymentReference!)}
+                            className="ml-1 text-thofnaa-navy hover:text-thofnaa-gold transition-colors"
+                            title="Copy Payment Reference"
+                          >
+                            {copiedRef === item.paymentReference ? (
+                              <Check className="w-3.5 h-3.5 text-thofnaa-emerald" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
+                      )}
+
+                      {isNotSubmitted && (
+                        <Link href="/payment">
+                          <Button variant="outline" size="sm" className="text-xs bg-white">
+                            Submit Proof
+                          </Button>
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </CardContent>
+
+            <CardFooter className="bg-gray-50 text-[11px] text-thofnaa-charcoal-muted justify-between">
+              <span>🔒 Verification records are updated in real-time by THOFNAA Administration.</span>
+              <span className="font-mono">Contact: tthofnaa@gmail.com</span>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

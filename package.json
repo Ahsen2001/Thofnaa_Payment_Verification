@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "dev:clean": "next dev --clean",
-    "dev:webpack": "next dev --webpack",
+    "dev": "next dev -p 3000",
+    "dev:clean": "next dev --clean -p 3000",
+    "dev:webpack": "next dev --webpack -p 3000",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -19,6 +19,7 @@
     "next": "^16.2.12",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "resend": "^6.18.1",
     "tailwind-merge": "^2.6.1"
   },
   "devDependencies": {

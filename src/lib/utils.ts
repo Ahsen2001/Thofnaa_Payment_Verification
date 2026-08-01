@@ -18,3 +18,12 @@ export function formatRegNumber(val: string): string {
   const cleaned = val.toUpperCase().replace(/[^A-Z0-9-]/g, "");
   return cleaned;
 }
+
+export function formatNameWithInitials(name: string): string {
+  if (!name) return "";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length <= 1) return name;
+  const initials = parts.slice(0, -1).map((p) => `${p.charAt(0).toUpperCase()}.`).join(" ");
+  const lastName = parts[parts.length - 1];
+  return `${initials} ${lastName}`;
+}

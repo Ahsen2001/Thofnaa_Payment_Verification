@@ -51,8 +51,8 @@ export function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo & Institute Title */}
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-lg bg-thofnaa-gold flex items-center justify-center text-thofnaa-navy shadow-gold group-hover:scale-105 transition-transform">
-              <GraduationCap className="w-6 h-6" />
+            <div className="w-10 h-10 rounded-lg bg-white p-0.5 flex items-center justify-center text-thofnaa-navy shadow-gold group-hover:scale-105 transition-transform overflow-hidden">
+              <img src="/thofnaa-logo.png" alt="THOFNAA Institute Logo" className="w-full h-full object-contain" />
             </div>
             <div>
               <div className="font-serif font-bold text-lg tracking-tight text-white group-hover:text-thofnaa-gold transition-colors flex items-center gap-2">

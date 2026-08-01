@@ -120,6 +120,18 @@ export interface Database {
           submitted_at: string;
         }[];
       };
+      verify_payment_and_assign_reference: {
+        Args: {
+          p_payment_id: string;
+          p_admin_user_id: string;
+          p_admin_note?: string | null;
+        };
+        Returns: {
+          success: boolean;
+          payment_reference: string;
+          message: string;
+        }[];
+      };
     };
   };
 }

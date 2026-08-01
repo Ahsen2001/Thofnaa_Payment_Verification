@@ -8,6 +8,11 @@ export const metadata: Metadata = {
   title: `${THOFNAA_CONFIG.name} - Student Payment Verification Portal`,
   description: "Official online payment proof verification portal for THOFNAA INSTITUTE Sinhala tuition fees.",
   keywords: ["THOFNAA", "Sinhala Tuition", "Payment Verification", "Student Registration", "Tuition Receipt"],
+  icons: {
+    icon: "/thofnaa-logo.png",
+    shortcut: "/thofnaa-logo.png",
+    apple: "/thofnaa-logo.png",
+  },
 };
 
 export default function RootLayout({
@@ -16,8 +21,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full">
-      <body className="flex flex-col min-h-screen bg-thofnaa-ivory text-thofnaa-charcoal antialiased selection:bg-thofnaa-gold/30 selection:text-thofnaa-navy">
+    <html lang="en" className="h-full" suppressHydrationWarning>
+      <body className="flex flex-col min-h-screen bg-thofnaa-ivory text-thofnaa-charcoal antialiased selection:bg-thofnaa-gold/30 selection:text-thofnaa-navy" suppressHydrationWarning>
         <Navbar />
         <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {children}

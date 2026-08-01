@@ -2,9 +2,12 @@ import React from "react";
 import { cn } from "@/lib/utils";
 
 export interface MetricsCardProps {
-  label: string;
+  label?: string;
+  title?: string;
   value: string | number;
   subtitle?: string;
+  changeText?: string;
+  changeType?: "positive" | "negative" | "warning" | "neutral";
   icon: React.ReactNode;
   variant?: "navy" | "emerald" | "amber" | "orange" | "purple";
   className?: string;
@@ -12,12 +15,24 @@ export interface MetricsCardProps {
 
 export function MetricsCard({
   label,
+  title,
   value,
   subtitle,
+  changeText,
+  changeType,
   icon,
-  variant = "navy",
+  variant,
   className,
 }: MetricsCardProps) {
+  const displayLabel = title || label || "";
+  const displaySubtitle = changeText || subtitle || "";
+
+  let resolvedVariant = variant || "navy";
+  if (!variant && changeType) {
+    if (changeType === "positive") resolvedVariant = "emerald";
+    if (changeType === "warning") resolvedVariant = "amber";
+    if (changeType === "negative") resolvedVariant = "orange";
+  }
   const borderVariants = {
     navy: "border-l-4 border-l-thofnaa-navy",
     emerald: "border-l-4 border-l-thofnaa-emerald",
@@ -38,20 +53,20 @@ export function MetricsCard({
     <div
       className={cn(
         "rounded-2xl bg-white p-5 border border-gray-200/80 shadow-academic-subtle flex items-center justify-between transition-all duration-200 hover:shadow-md",
-        borderVariants[variant],
+        borderVariants[resolvedVariant],
         className
       )}
     >
       <div className="space-y-1">
         <span className="text-[11px] font-bold uppercase tracking-wider text-thofnaa-charcoal-muted font-mono block">
-          {label}
+          {displayLabel}
         </span>
         <div className="text-2xl font-extrabold text-thofnaa-navy tracking-tight font-mono">
           {value}
         </div>
-        {subtitle && (
+        {displaySubtitle && (
           <p className="text-[11px] text-thofnaa-charcoal-muted font-medium">
-            {subtitle}
+            {displaySubtitle}
           </p>
         )}
       </div>
@@ -59,7 +74,7 @@ export function MetricsCard({
       <div
         className={cn(
           "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-xs",
-          iconVariants[variant]
+          iconVariants[resolvedVariant]
         )}
       >
         {icon}

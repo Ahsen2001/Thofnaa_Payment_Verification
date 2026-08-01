@@ -3,115 +3,149 @@
 import React, { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle2, Copy, Check, Download, ArrowRight, Home, SearchCheck, MailCheck, ShieldCheck } from "lucide-react";
-import { THOFNAA_CONFIG } from "@/lib/constants";
+import { 
+  CheckCircle2, 
+  Copy, 
+  Check, 
+  Search, 
+  Home, 
+  GraduationCap, 
+  Clock, 
+  MailCheck, 
+  ShieldCheck, 
+  ArrowRight 
+} from "lucide-react";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { formatLKR } from "@/lib/utils";
 
-function PaymentSuccessContent() {
+function SuccessContent() {
   const searchParams = useSearchParams();
-
-  const paymentRef = searchParams.get("ref") || "THF-PAY-26-0004";
-  const studentName = searchParams.get("student") || "Kasun Kalhara Perera";
-  const month = searchParams.get("month") || "February";
-
   const [copied, setCopied] = useState(false);
 
-  const handleCopyRef = () => {
-    navigator.clipboard.writeText(paymentRef);
+  // Extract safe params from URL query string
+  const referenceNo = searchParams.get("ref") || "THF-PAY-26-0001";
+  const studentName = searchParams.get("student") || "[DEMO] Kasun Kalhara Perera";
+  const regNo = searchParams.get("regNo") || "THF-26-0001";
+  const paymentMonth = searchParams.get("month") || "August";
+  const academicYear = searchParams.get("year") || "2026";
+  const amountPaid = Number(searchParams.get("amount")) || 1000;
+
+  const handleCopyReference = () => {
+    navigator.clipboard.writeText(referenceNo);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8 py-4">
-      <Card goldHeaderBorder className="shadow-academic border-2 border-thofnaa-emerald/40 overflow-hidden">
-        <div className="bg-gradient-to-br from-thofnaa-navy via-thofnaa-navy-800 to-thofnaa-emerald text-white p-8 text-center space-y-4">
-          <div className="w-16 h-16 rounded-full bg-thofnaa-gold text-thofnaa-navy flex items-center justify-center mx-auto shadow-gold">
-            <CheckCircle2 className="w-10 h-10" />
-          </div>
+    <div className="max-w-3xl mx-auto space-y-8 animate-in fade-in zoom-in-95 duration-300">
+      <PageHeader
+        title="THOFNAA INSTITUTE"
+        subtitle="Official Student Payment Proof Submission Confirmation"
+        badgeText="Submission Complete"
+      />
 
-          <div className="space-y-1">
-            <span className="text-xs uppercase tracking-widest font-mono text-thofnaa-gold font-bold">
-              Payment Submission Received
-            </span>
-            <h1 className="text-2xl sm:text-3xl font-serif font-bold text-white">
-              Thank You! Proof Submitted
-            </h1>
-            <p className="text-xs text-thofnaa-ivory/80 max-w-md mx-auto leading-relaxed">
-              Your payment proof has been successfully logged into the THOFNAA administrative verification queue.
-            </p>
+      {/* MAIN SUCCESS CARD */}
+      <Card goldHeaderBorder className="shadow-lg border-2 border-thofnaa-emerald/30 overflow-hidden">
+        <CardHeader className="bg-gradient-to-r from-thofnaa-navy to-thofnaa-navy/90 text-white text-center py-8 relative">
+          <div className="mx-auto w-16 h-16 rounded-2xl bg-thofnaa-gold/20 text-thofnaa-gold flex items-center justify-center mb-3 shadow-gold border border-thofnaa-gold/40">
+            <CheckCircle2 className="w-10 h-10 text-thofnaa-gold" />
           </div>
-        </div>
+          <CardTitle className="text-2xl font-serif text-white">
+            Payment Proof Submitted
+          </CardTitle>
+          <CardDescription className="text-thofnaa-gold/90 text-sm">
+            Thank you. Your tuition deposit receipt has been safely received.
+          </CardDescription>
+        </CardHeader>
 
-        <CardContent className="p-6 sm:p-8 space-y-6">
-          {/* Reference Number Box */}
-          <div className="p-5 rounded-xl bg-thofnaa-ivory border-2 border-thofnaa-navy/20 space-y-2 text-center">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-thofnaa-charcoal-muted block font-mono">
-              Your Unique Payment Reference Code
-            </span>
-            <div className="flex items-center justify-center gap-3">
-              <span className="text-2xl sm:text-3xl font-mono font-extrabold text-thofnaa-navy tracking-wider">
-                {paymentRef}
+        <CardContent className="space-y-6 pt-6 px-6 sm:px-8">
+          
+          {/* SAFE SUBMISSION REFERENCE CODE BOX */}
+          <div className="p-4 rounded-2xl bg-thofnaa-ivory border border-thofnaa-gold/40 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+            <div>
+              <span className="text-thofnaa-charcoal-muted block text-xs font-mono uppercase tracking-wider">
+                Submission Reference Number
               </span>
-              <button
-                type="button"
-                onClick={handleCopyRef}
-                className="p-2 rounded-lg bg-thofnaa-navy text-white hover:bg-thofnaa-navy-600 transition-colors shadow-xs"
-                title="Copy Reference Code"
-              >
-                {copied ? <Check className="w-4 h-4 text-thofnaa-gold" /> : <Copy className="w-4 h-4" />}
-              </button>
-            </div>
-            {copied && <span className="text-xs text-thofnaa-emerald font-bold block">Copied to clipboard!</span>}
-          </div>
-
-          {/* Submission Overview Table */}
-          <div className="space-y-3 text-xs border border-gray-200 rounded-xl p-4 bg-white">
-            <h4 className="font-bold text-thofnaa-navy uppercase tracking-wider text-[11px] border-b border-gray-100 pb-2">
-              Submission Summary
-            </h4>
-            <div className="grid grid-cols-2 gap-2">
-              <span className="text-thofnaa-charcoal-muted">Student Name:</span>
-              <strong className="text-thofnaa-navy text-right font-serif">{studentName}</strong>
-
-              <span className="text-thofnaa-charcoal-muted">Tuition Month:</span>
-              <strong className="text-thofnaa-navy text-right">{month} 2026</strong>
-
-              <span className="text-thofnaa-charcoal-muted">Amount:</span>
-              <strong className="text-thofnaa-emerald text-right font-mono font-bold">
-                LKR {THOFNAA_CONFIG.tuition.monthlyFeeLKR.toLocaleString()}.00
-              </strong>
-
-              <span className="text-thofnaa-charcoal-muted">Status:</span>
-              <strong className="text-amber-700 text-right uppercase font-mono">
-                PENDING VERIFICATION
+              <strong className="text-thofnaa-navy font-mono text-xl sm:text-2xl font-extrabold tracking-tight">
+                {referenceNo}
               </strong>
             </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleCopyReference}
+              leftIcon={copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+              className="bg-white text-xs font-mono border-gray-300 hover:bg-gray-50"
+            >
+              {copied ? "Copied!" : "Copy Ref"}
+            </Button>
           </div>
 
-          {/* Automated Receipt Info */}
-          <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-3 text-xs text-emerald-900">
-            <MailCheck className="w-5 h-5 text-thofnaa-emerald shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <h5 className="font-bold text-emerald-950">Automated Parent Email Receipt</h5>
-              <p className="text-[11px] text-emerald-800 leading-relaxed">
-                Once THOFNAA administration verifies your deposit against People&apos;s Bank statement, an official tuition receipt with PDF download link will be emailed automatically to your guardian email address.
+          {/* RECEIPT SUMMARY GRID */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm bg-white p-5 rounded-2xl border border-gray-200">
+            <div>
+              <span className="text-thofnaa-charcoal-muted block text-xs font-mono uppercase">Student Registration No</span>
+              <strong className="text-thofnaa-navy font-mono text-base">{regNo}</strong>
+            </div>
+
+            <div>
+              <span className="text-thofnaa-charcoal-muted block text-xs font-mono uppercase">Student Name</span>
+              <strong className="text-thofnaa-navy font-serif text-base">{studentName}</strong>
+            </div>
+
+            <div className="pt-2 sm:pt-0">
+              <span className="text-thofnaa-charcoal-muted block text-xs font-mono uppercase">Payment Period</span>
+              <strong className="text-thofnaa-navy text-base">{paymentMonth} {academicYear}</strong>
+            </div>
+
+            <div className="pt-2 sm:pt-0">
+              <span className="text-thofnaa-charcoal-muted block text-xs font-mono uppercase">Amount Paid</span>
+              <strong className="text-thofnaa-emerald font-mono text-lg font-extrabold">{formatLKR(amountPaid)}</strong>
+            </div>
+
+            <div className="col-span-1 sm:col-span-2 pt-3 border-t border-gray-100 flex items-center justify-between">
+              <span className="text-thofnaa-charcoal-muted block text-xs font-mono uppercase">Current Status</span>
+              <StatusBadge status="PENDING" label="Pending Verification" />
+            </div>
+          </div>
+
+          {/* REQUIRED OFFICIAL GUIDANCE MESSAGE */}
+          <div className="p-4 rounded-2xl bg-blue-50/80 border border-blue-200 text-xs sm:text-sm text-blue-950 flex items-start gap-3 leading-relaxed">
+            <MailCheck className="w-5 h-5 text-thofnaa-navy shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-thofnaa-navy mb-1">Next Steps & Email Confirmation:</p>
+              <p>
+                Your payment proof has been received and is waiting for verification by THOFNAA INSTITUTE. You will receive a confirmation email after your payment is approved.
               </p>
             </div>
           </div>
         </CardContent>
 
-        <CardFooter className="bg-gray-50 flex flex-col sm:flex-row gap-3 justify-between">
-          <Link href="/" className="w-full sm:w-auto">
-            <Button variant="outline" size="md" leftIcon={<Home className="w-4 h-4" />} className="w-full">
-              Back to Home
+        <CardFooter className="bg-gray-50/80 p-6 flex flex-col sm:flex-row gap-4 items-center justify-between border-t border-gray-200">
+          <Link href={`/payment/status?ref=${encodeURIComponent(referenceNo)}`} className="w-full sm:w-auto">
+            <Button
+              variant="primary"
+              size="lg"
+              leftIcon={<Search className="w-5 h-5" />}
+              className="w-full sm:w-auto font-bold shadow-md"
+            >
+              Check Payment Status
             </Button>
           </Link>
 
-          <Link href="/payment/status" className="w-full sm:w-auto">
-            <Button variant="primary" size="md" rightIcon={<SearchCheck className="w-4 h-4" />} className="w-full font-bold">
-              Track Verification Status
+          <Link href="/" className="w-full sm:w-auto">
+            <Button
+              variant="outline"
+              size="lg"
+              leftIcon={<Home className="w-5 h-5" />}
+              className="w-full sm:w-auto font-bold bg-white border-gray-300"
+            >
+              Return Home
             </Button>
           </Link>
         </CardFooter>
@@ -122,8 +156,8 @@ function PaymentSuccessContent() {
 
 export default function PaymentSuccessPage() {
   return (
-    <Suspense fallback={<div className="p-10 text-center text-sm font-semibold">Loading confirmation details...</div>}>
-      <PaymentSuccessContent />
+    <Suspense fallback={<div className="p-10 text-center text-sm font-semibold">Loading payment receipt confirmation...</div>}>
+      <SuccessContent />
     </Suspense>
   );
 }
