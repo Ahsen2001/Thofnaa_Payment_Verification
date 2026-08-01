@@ -56,23 +56,34 @@ export async function proxy(request: NextRequest) {
       }
     );
 
-    // 0. Check custom admin session cookie (demo or live token)
+    // 0. Verify Admin Session Cookie & Supabase Auth User
     const adminSessionCookie = request.cookies.get("thofnaa_admin_session")?.value;
-    if (adminSessionCookie === "demo-token" || adminSessionCookie === "active-admin-token") {
-      return response;
-    }
-
-    // 1. Fetch current authenticated user session
+    
+    // In production, strictly enforce Supabase Auth session verification
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    // 2. Redirect Unauthenticated Users to /admin/login
-    if (authError || !user) {
+    // Allow demo session bypass ONLY if development environment or valid active session token matching authenticated session
+    const isValidDemoSession = process.env.NODE_ENV !== "production" && adminSessionCookie === "demo-token";
+    const isAuthenticatedUser = !!user && !authError;
+
+    if (!isAuthenticatedUser && !isValidDemoSession) {
       const loginUrl = new URL("/admin/login", request.url);
       loginUrl.searchParams.set("next", pathname);
       return NextResponse.redirect(loginUrl);
     }
 
+    // Bypass profile lookup if demo session in non-production
+    if (isValidDemoSession) {
+      return response;
+    }
+
     // 3. Server-side Authorization Check: Check admin_profiles.active === true
+    if (!user) {
+      const loginUrl = new URL("/admin/login", request.url);
+      loginUrl.searchParams.set("next", pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+
     const { data: adminProfile, error: profileError } = await (supabase
       .from("admin_profiles") as any)
       .select("active, role")
