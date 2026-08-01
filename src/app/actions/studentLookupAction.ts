@@ -49,28 +49,37 @@ export async function lookupStudentRegNo(rawRegNo: string): Promise<LookupResult
     let matchedStudent: any = null;
 
     // 3. Query Supabase Database if Supabase URL is configured and not default demo
+    // Use a 5-second timeout so a slow/bad Supabase connection never hangs the button
     if (clientEnv.supabase.url && !clientEnv.supabase.url.includes("demo-thofnaa")) {
       try {
         const { createClient } = await import("@supabase/supabase-js");
         const supabase = createClient(clientEnv.supabase.url, clientEnv.supabase.anonKey);
-        const { data, error } = await supabase
+
+        // Try both column name variants (student_reg_no and registration_no)
+        const timeoutPromise = new Promise<null>((resolve) =>
+          setTimeout(() => resolve(null), 5000)
+        );
+        const queryPromise = supabase
           .from("students")
           .select("*")
-          .ilike("student_reg_no", normalizedRegNo)
-          .maybeSingle();
+          .or(`student_reg_no.ilike.${normalizedRegNo},registration_no.ilike.${normalizedRegNo}`)
+          .maybeSingle()
+          .then(({ data, error }) => (data && !error ? data : null));
 
-        if (data && !error) {
+        const data = await Promise.race([queryPromise, timeoutPromise]);
+
+        if (data) {
           matchedStudent = {
             id: data.id,
-            studentRegNo: data.student_reg_no,
+            studentRegNo: data.student_reg_no || data.registration_no || normalizedRegNo,
             fullName: data.full_name,
-            gradeLevel: data.grade_level,
+            gradeLevel: data.grade_level || data.grade,
             batch: data.batch,
             programme: data.programme,
-            guardianName: data.guardian_name,
-            guardianEmail: data.guardian_email,
-            guardianPhone: data.guardian_phone || data.whatsapp_number,
-            whatsappNumber: data.whatsapp_number || data.guardian_phone,
+            guardianName: data.guardian_name || data.parent_name,
+            guardianEmail: data.guardian_email || data.parent_email,
+            guardianPhone: data.guardian_phone || data.whatsapp_number || data.parent_whatsapp,
+            whatsappNumber: data.whatsapp_number || data.guardian_phone || data.parent_whatsapp,
             active: data.active !== false,
           };
         }

@@ -58,25 +58,33 @@ export async function lookupPaymentStatusAction(
 
     let matchingStudent: any = null;
 
-    // 2. Query Supabase Database if configured
+    // 2. Query Supabase Database if configured (5-second timeout)
     if (clientEnv.supabase.url && !clientEnv.supabase.url.includes("demo-thofnaa")) {
       try {
         const { createClient } = await import("@supabase/supabase-js");
         const supabase = createClient(clientEnv.supabase.url, clientEnv.supabase.anonKey);
-        const { data, error } = await supabase
+
+        const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000));
+        const queryPromise = supabase
           .from("students")
           .select("*")
-          .ilike("student_reg_no", normalizedRegNo)
-          .ilike("guardian_email", normalizedEmail)
-          .maybeSingle();
+          .or(`student_reg_no.ilike.${normalizedRegNo},registration_no.ilike.${normalizedRegNo}`)
+          .maybeSingle()
+          .then(({ data, error }) => {
+            if (!data || error) return null;
+            const email = (data.guardian_email || data.parent_email || "").toLowerCase();
+            return email === normalizedEmail ? data : null;
+          });
 
-        if (data && !error) {
+        const data = await Promise.race([queryPromise, timeoutPromise]);
+
+        if (data) {
           matchingStudent = {
-            registrationNo: data.student_reg_no,
+            registrationNo: data.student_reg_no || data.registration_no || normalizedRegNo,
             fullName: data.full_name,
-            grade: data.grade_level,
+            grade: data.grade_level || data.grade,
             programme: data.programme || data.batch || "Second Language Sinhala",
-            email: data.guardian_email,
+            email: data.guardian_email || data.parent_email,
           };
         }
       } catch (err) {
@@ -120,13 +128,18 @@ export async function lookupPaymentStatusAction(
       try {
         const { createClient } = await import("@supabase/supabase-js");
         const supabase = createClient(clientEnv.supabase.url, clientEnv.supabase.anonKey);
-        const { data, error } = await supabase
+
+        const subTimeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000));
+        const subQueryPromise = supabase
           .from("payment_submissions")
           .select("*")
-          .ilike("student_reg_no", normalizedRegNo);
+          .or(`student_reg_no.ilike.${normalizedRegNo}`)
+          .then(({ data, error }) => (data && !error && data.length > 0 ? data : null));
 
-        if (data && !error && data.length > 0) {
-          studentSubmissions = data.map((d) => ({
+        const data = await Promise.race([subQueryPromise, subTimeoutPromise]);
+
+        if (data) {
+          studentSubmissions = data.map((d: any) => ({
             paymentMonth: d.payment_month,
             academicYear: d.academic_year,
             feeAmount: d.fee_amount,
