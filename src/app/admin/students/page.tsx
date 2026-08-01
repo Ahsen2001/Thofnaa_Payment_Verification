@@ -106,8 +106,8 @@ export default function AdminStudentsPage() {
       }
 
       // 4. Active/Inactive Status Filter
-      if (selectedStatus === "Active") return true;
-      if (selectedStatus === "Inactive") return false;
+      if (selectedStatus === "Active" && student.active === false) return false;
+      if (selectedStatus === "Inactive" && student.active !== false) return false;
 
       return true;
     });
@@ -472,9 +472,15 @@ export default function AdminStudentsPage() {
                         </TableCell>
 
                         <TableCell className="whitespace-nowrap">
-                          <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full font-mono whitespace-nowrap">
-                            <CheckCircle2 className="w-3 h-3 text-thofnaa-emerald" /> ACTIVE
-                          </span>
+                          {st.active !== false ? (
+                            <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full font-mono whitespace-nowrap">
+                              <CheckCircle2 className="w-3 h-3 text-thofnaa-emerald" /> ACTIVE
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 bg-red-50 text-red-800 border border-red-200 text-[10px] font-bold px-2 py-0.5 rounded-full font-mono whitespace-nowrap">
+                              <XCircle className="w-3 h-3 text-red-600" /> INACTIVE
+                            </span>
+                          )}
                         </TableCell>
 
                         <TableCell className="text-right whitespace-nowrap">

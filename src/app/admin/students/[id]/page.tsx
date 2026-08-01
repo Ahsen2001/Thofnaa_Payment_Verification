@@ -98,6 +98,7 @@ export default function AdminStudentDetailPage({
       gradeLevel,
       batch,
       programme,
+      active,
     };
     updateStoredStudent(updatedObj);
 

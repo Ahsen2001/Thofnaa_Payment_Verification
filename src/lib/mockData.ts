@@ -10,6 +10,7 @@ export interface Student {
   guardianPhone: string;
   whatsappNumber: string;
   createdAt: string;
+  active?: boolean;
 }
 
 export interface PaymentSubmission {
