@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { 
   Users, 
@@ -21,7 +21,6 @@ import {
   Trash2,
   AlertTriangle,
   FileSpreadsheet,
-  AlertCircle,
   Check
 } from "lucide-react";
 import { AdminSidebar } from "@/components/layout/AdminSidebar";
@@ -34,11 +33,26 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Modal } from "@/components/ui/Modal";
 import { formatLKR } from "@/lib/utils";
-import { INITIAL_STUDENTS, Student } from "@/lib/mockData";
+import { Student } from "@/lib/mockData";
 import { bulkImportStudentsAction, bulkEditStudentsAction, BulkStudentRowInput } from "@/app/actions/bulkStudentActions";
 import { deleteStudentAction } from "@/app/actions/updateStudentAction";
+import { getStoredStudents, deleteStoredStudent, addStoredStudents, saveStoredStudents } from "@/lib/studentStore";
 
 export default function AdminStudentsPage() {
+  // Persistent Student Roster State
+  const [students, setStudents] = useState<Student[]>([]);
+
+  useEffect(() => {
+    setStudents(getStoredStudents());
+
+    const handleUpdate = () => {
+      setStudents(getStoredStudents());
+    };
+
+    window.addEventListener("thofnaa_students_updated", handleUpdate);
+    return () => window.removeEventListener("thofnaa_students_updated", handleUpdate);
+  }, []);
+
   // Filter States
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedGrade, setSelectedGrade] = useState("All");
@@ -71,7 +85,7 @@ export default function AdminStudentsPage() {
 
   // Filter Roster Dataset
   const filteredStudents = useMemo(() => {
-    return INITIAL_STUDENTS.filter((student) => {
+    return students.filter((student) => {
       // 1. Search Query Filter (Reg No or Name)
       if (searchQuery.trim()) {
         const query = searchQuery.trim().toLowerCase();
@@ -97,7 +111,7 @@ export default function AdminStudentsPage() {
 
       return true;
     });
-  }, [searchQuery, selectedGrade, selectedBatch, selectedStatus]);
+  }, [students, searchQuery, selectedGrade, selectedBatch, selectedStatus]);
 
   // Paginated Roster
   const totalPages = Math.ceil(filteredStudents.length / itemsPerPage) || 1;
@@ -133,6 +147,25 @@ export default function AdminStudentsPage() {
     }
   };
 
+  // Handle Delete Single Student Execution
+  const handleExecuteDeleteStudent = async () => {
+    if (!studentToDelete) return;
+    setIsDeleting(true);
+    const targetId = studentToDelete.id;
+
+    // 1. Delete persistently from localStorage
+    deleteStoredStudent(targetId);
+
+    // 2. Trigger server action for Audit Logging & DB cleanup
+    await deleteStudentAction(targetId);
+
+    // 3. Update component state
+    setStudents(getStoredStudents());
+    setSelectedStudentIds((prev) => prev.filter((id) => id !== targetId));
+    setIsDeleting(false);
+    setStudentToDelete(null);
+  };
+
   // Handle CSV Parsing and Bulk Import
   const handleProcessCsvImport = async () => {
     if (!csvText.trim()) return;
@@ -140,7 +173,6 @@ export default function AdminStudentsPage() {
     setIsSubmittingImport(true);
     setImportResult(null);
 
-    // Parse CSV lines: Full Name, Grade Level, Parent Email, WhatsApp Number, [Parent Name], [Reg No]
     const lines = csvText.trim().split("\n");
     const parsedRows: BulkStudentRowInput[] = [];
 
@@ -159,7 +191,7 @@ export default function AdminStudentsPage() {
     });
 
     if (parsedRows.length === 0) {
-      setImportResult({ errors: ["No valid student lines detected. Follow CSV format: Full Name, Grade, Email, WhatsApp."] });
+      setImportResult({ errors: ["No valid student lines detected. Format: Full Name, Grade, Email, WhatsApp."] });
       setIsSubmittingImport(false);
       return;
     }
@@ -170,6 +202,7 @@ export default function AdminStudentsPage() {
     if (res.success) {
       setImportResult({ count: res.importedCount, errors: res.errors });
       setCsvText("");
+      setStudents(getStoredStudents());
     } else {
       setImportResult({ errors: res.errors });
     }
@@ -189,30 +222,14 @@ export default function AdminStudentsPage() {
 
     if (res.success) {
       setEditSuccessMessage(res.message || "Students updated successfully.");
+      setStudents(getStoredStudents());
+
       setTimeout(() => {
         setIsBulkEditModalOpen(false);
         setEditSuccessMessage(null);
         setSelectedStudentIds([]);
-      }, 1200);
+      }, 1000);
     }
-  };
-
-  const handleExecuteDeleteStudent = async () => {
-    if (!studentToDelete) return;
-    setIsDeleting(true);
-    const targetId = studentToDelete.id;
-    const result = await deleteStudentAction(targetId);
-    setIsDeleting(false);
-
-    if (result.success) {
-      const idx = INITIAL_STUDENTS.findIndex((s) => s.id === targetId);
-      if (idx !== -1) {
-        INITIAL_STUDENTS.splice(idx, 1);
-      }
-      setSelectedStudentIds((prev) => prev.filter((id) => id !== targetId));
-      setCurrentPage(1);
-    }
-    setStudentToDelete(null);
   };
 
   return (
@@ -251,7 +268,7 @@ export default function AdminStudentsPage() {
               )}
 
               <span className="text-xs font-mono font-bold bg-thofnaa-navy text-white px-3 py-1.5 rounded-xl border border-thofnaa-gold/30">
-                Total Enrolled: {INITIAL_STUDENTS.length}
+                Total Enrolled: {students.length}
               </span>
             </div>
           }
@@ -564,7 +581,7 @@ export default function AdminStudentsPage() {
               Full Name, Grade Level, Parent Email, WhatsApp Number, [Parent Name], [Reg No]
             </p>
             <p className="text-[11px] text-gray-600">
-              * Registration numbers will be auto-generated (e.g. THF-26-0007) if left empty. Grade levels automatically resolve to corresponding Batch schedules.
+              * Registration numbers will be auto-generated (e.g. THF-26-0007) if left empty.
             </p>
           </div>
 

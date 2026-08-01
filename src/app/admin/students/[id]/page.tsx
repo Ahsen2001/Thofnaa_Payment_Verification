@@ -30,6 +30,7 @@ import { StatusBadge, PaymentStatus } from "@/components/ui/StatusBadge";
 import { formatLKR } from "@/lib/utils";
 import { INITIAL_STUDENTS, INITIAL_SUBMISSIONS } from "@/lib/mockData";
 import { updateStudentAction, deleteStudentAction } from "@/app/actions/updateStudentAction";
+import { getStoredStudents, updateStoredStudent, deleteStoredStudent } from "@/lib/studentStore";
 
 export default function AdminStudentDetailPage({
   params,
@@ -40,8 +41,9 @@ export default function AdminStudentDetailPage({
   const resolvedParams = use(params);
   const studentId = resolvedParams.id;
 
-  // Find Student Record
-  const student = INITIAL_STUDENTS.find((s) => s.id === studentId) || INITIAL_STUDENTS[0];
+  // Find Student Record from persistent storage
+  const allStudents = getStoredStudents();
+  const student = allStudents.find((s) => s.id === studentId) || allStudents[0];
 
   // Editable Form States
   const [fullName, setFullName] = useState(student.fullName.replace(/\[.*?\]\s*/g, ""));
@@ -85,6 +87,21 @@ export default function AdminStudentDetailPage({
     setIsUpdating(true);
     setActionError(null);
 
+    // 1. Save persistently to localStorage
+    const updatedObj = {
+      ...student,
+      fullName: fullName.trim(),
+      guardianName: guardianName.trim(),
+      guardianEmail: guardianEmail.trim().toLowerCase(),
+      whatsappNumber: whatsappNumber.trim(),
+      guardianPhone: whatsappNumber.trim(),
+      gradeLevel,
+      batch,
+      programme,
+    };
+    updateStoredStudent(updatedObj);
+
+    // 2. Trigger server action for DB update & Audit Log
     const result = await updateStudentAction({
       studentId: student.id,
       fullName,
@@ -101,18 +118,6 @@ export default function AdminStudentDetailPage({
     setIsUpdating(false);
 
     if (result.success) {
-      // Sync client-side in-memory mock record so roster page updates immediately
-      const clientTarget = INITIAL_STUDENTS.find((s) => s.id === student.id);
-      if (clientTarget) {
-        clientTarget.fullName = fullName.trim();
-        clientTarget.guardianName = guardianName.trim();
-        clientTarget.guardianEmail = guardianEmail.trim().toLowerCase();
-        clientTarget.whatsappNumber = whatsappNumber.trim();
-        clientTarget.guardianPhone = whatsappNumber.trim();
-        clientTarget.gradeLevel = gradeLevel;
-        clientTarget.batch = batch;
-        clientTarget.programme = programme;
-      }
       setActionSuccess(result.message || "Student profile updated and audit log recorded.");
     } else {
       setActionError(result.error || "Failed to update student profile.");
@@ -123,14 +128,14 @@ export default function AdminStudentDetailPage({
     setIsDeleteModalOpen(false);
     setIsDeleting(true);
 
+    // 1. Delete persistently from localStorage
+    deleteStoredStudent(student.id);
+
+    // 2. Trigger server action for Audit Logging & DB cleanup
     const result = await deleteStudentAction(student.id);
     setIsDeleting(false);
 
     if (result.success) {
-      const idx = INITIAL_STUDENTS.findIndex((s) => s.id === student.id);
-      if (idx !== -1) {
-        INITIAL_STUDENTS.splice(idx, 1);
-      }
       router.push("/admin/students");
     } else {
       setActionError(result.error || "Failed to delete student record.");
