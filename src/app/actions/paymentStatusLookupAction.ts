@@ -1,6 +1,3 @@
-"use server";
-
-import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { INITIAL_SUBMISSIONS, INITIAL_STUDENTS } from "@/lib/mockData";
 import { getStoredStudents, getStoredSubmissions } from "@/lib/studentStore";
 import { formatNameWithInitials } from "@/lib/utils";
@@ -83,29 +80,7 @@ export async function lookupPaymentStatusAction(
         }
       : null;
 
-    // Supabase DB Lookup Fallback
-    if (!matchingStudent) {
-      try {
-        const supabase = await createServerSupabaseClient();
-        const { data: dbStudent } = await (supabase.from("students") as any)
-          .select("registration_no, full_name, grade_level, programme, guardian_email")
-          .eq("registration_no", normalizedRegNo)
-          .eq("guardian_email", normalizedEmail)
-          .single();
 
-        if (dbStudent) {
-          matchingStudent = {
-            registrationNo: dbStudent.registration_no,
-            fullName: dbStudent.full_name,
-            grade: dbStudent.grade_level,
-            programme: dbStudent.programme || "Second Language Sinhala",
-            email: dbStudent.guardian_email,
-          };
-        }
-      } catch (dbErr) {
-        // Continue with null check
-      }
-    }
 
     // 3. Dual-Factor Validation Guard: Must match BOTH fields
     if (!matchingStudent) {

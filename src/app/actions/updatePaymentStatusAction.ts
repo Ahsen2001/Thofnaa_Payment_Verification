@@ -1,6 +1,4 @@
-"use server";
 
-import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { INITIAL_SUBMISSIONS, PaymentSubmission } from "@/lib/mockData";
 import { verifyPaymentAction } from "@/app/actions/verifyPaymentAction";

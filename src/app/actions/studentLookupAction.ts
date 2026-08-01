@@ -1,4 +1,3 @@
-"use server";
 
 import { INITIAL_STUDENTS } from "@/lib/mockData";
 import { getStoredStudents } from "@/lib/studentStore";

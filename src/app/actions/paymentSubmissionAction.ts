@@ -1,4 +1,3 @@
-"use server";
 
 import { INITIAL_SUBMISSIONS, PaymentSubmission } from "@/lib/mockData";
 import { getStoredSubmissions, addStoredSubmission } from "@/lib/studentStore";
